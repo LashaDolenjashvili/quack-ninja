@@ -1,0 +1,38 @@
+{
+  "name": "filesql",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "postinstall": "node scripts/copy-duckdb-assets.mjs",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "smoke": "echo \"See docs/SMOKE_TESTS.md\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@duckdb/duckdb-wasm": "^1.33.1-dev16.0",
+    "@monaco-editor/react": "^4.7.0",
+    "@supabase/supabase-js": "^2.90.1",
+    "@tanstack/react-query": "^5.66.0",
+    "@tanstack/react-virtual": "^3.13.18",
+    "idb": "^8.0.3",
+    "next": "^16.1.6",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.1",
+    "tailwindcss": "^4",
+    "tsx": "^4.19.2",
+    "typescript": "^5"
+  }
+}
