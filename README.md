@@ -1,6 +1,6 @@
-# FileSQL
+# QuackNinja
 
-FileSQL is a local-first, browser-based SQL console powered by DuckDB-WASM. Query CSV and XLSX locally with safe preview defaults and export to CSV without uploading data.
+QuackNinja is a local-first, browser-based SQL console for CSV, Excel (.xlsx), and Parquet. Run SQL on exports, get quick answers, and export clean CSV results — all in your browser.
 
 ## Setup
 
@@ -15,6 +15,7 @@ npm install
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 TRIAL_ENABLED=true
 NEXT_PUBLIC_TRIAL_ENABLED=true
 ```
@@ -35,14 +36,14 @@ npm test
 
 ## Notes
 
-- FileSQL runs DuckDB-WASM inside a Web Worker. Files never leave your machine by default.
-- The backend is used only for authentication and plan metadata.
-- Exports use DuckDB COPY and do not rely on rendering results in the UI.
-- XLSX parsing is done in a dedicated worker to avoid blocking the UI; avoid importing untrusted spreadsheets.
+- QuackNinja runs locally in the browser by default; files stay on your machine.
+- The backend is used for authentication and plan/trial metadata only.
+- Exports use the query result (not full-table export).
+- Excel parsing is done in the client/worker pipeline; avoid importing untrusted spreadsheets.
 
 ## Billing (Paddle later)
 
-FileSQL is prepared for a future Paddle integration, but checkout is not implemented yet.
+QuackNinja is prepared for a future Paddle integration, but checkout is not implemented yet.
 
 ### How billing will work
 
@@ -84,4 +85,5 @@ Then POST `{ "plan": "pro" }` to `/functions/v1/billing-dev-toggle` with your us
 - Editor and Results heights remain stable; Results scrolls internally.
 - Attach XLSX with two sheets; select sheet and confirm detected range.
 - Import sheet with a stray cell to the right; verify stray is ignored.
+- Attach Parquet and confirm preview + query work.
 - Manual range selection works and imported table is queryable immediately.
