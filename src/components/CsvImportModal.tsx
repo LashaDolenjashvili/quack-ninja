@@ -295,6 +295,7 @@ export function CsvImportModal({
     file,
     fileType,
     header,
+    normalizedRange,
     workspaceId,
     xlsxRangeEnabled,
     xlsxRangeEnd,
@@ -511,7 +512,7 @@ export function CsvImportModal({
         </div>
         {sessionUsageRatio !== null && sessionUsageRatio >= 0.8 ? (
           <Banner tone="warning" className="mt-4 text-sm">
-            You're close to the session limit. Import as text is recommended.
+            You&apos;re close to the session limit. Import as text is recommended.
           </Banner>
         ) : null}
 

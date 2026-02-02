@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 type LogoProps = {
   className?: string;
   labelClassName?: string;
@@ -11,7 +13,7 @@ export function Logo({
 }: LogoProps) {
   return (
     <div className={`flex items-center gap-2 ${className ?? ""}`}>
-      <img
+      <Image
         src="/brand/quackninja-mark.png"
         alt="QuackNinja"
         width={100}
@@ -19,7 +21,7 @@ export function Logo({
         className="h-11 w-11 object-contain md:h-12 md:w-12"
       />
       {showText ? (
-        <img
+        <Image
           src="/brand/quackninja-wordmark-white.png"
           alt="QuackNinja"
           width={120}

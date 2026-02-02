@@ -256,7 +256,7 @@ export function ConsoleSessionProvider({
     setAttachedFilesState((current) =>
       typeof files === "function" ? files(current) : files
     );
-  }, [consoleId]);
+  }, []);
   const setQueryTabs = useCallback((
     tabs:
       | QueryTabSnapshot[]

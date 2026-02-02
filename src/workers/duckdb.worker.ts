@@ -34,9 +34,6 @@ import type {
   ParquetPreviewResult,
 } from "@/src/lib/duckdb-worker-types";
 
-let _db: duckdb.AsyncDuckDB | null = null;
-let _init: Promise<duckdb.AsyncDuckDB> | null = null;
-
 const ctx: DedicatedWorkerGlobalScope = self as DedicatedWorkerGlobalScope;
 
 let db: duckdb.AsyncDuckDB | null = null;

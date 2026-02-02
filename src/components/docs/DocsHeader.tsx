@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase, supabaseConfigured } from "@/src/lib/supabaseClient";
@@ -53,14 +54,14 @@ export function DocsHeader() {
     <header className="sticky top-0 z-40 border-b border-white/10 bg-[#003C79]">
       <div className="mx-auto flex w-full max-w-6xl items-center gap-6 px-6 py-4">
         <Link href="/" className="flex items-center gap-2">
-          <img
+          <Image
             src="/brand/quackninja-mark.png"
             alt="QuackNinja"
             width={48}
             height={48}
             className="h-8 w-8 object-contain md:h-10 md:w-10"
           />
-          <img
+          <Image
             src="/brand/quackninja-wordmark-white.png"
             alt="QuackNinja"
             width={220}

@@ -15,6 +15,7 @@ export function ResultsTable({ columns, rows, maxHeight, fill }: ResultsTablePro
   const visibleRowLimit = 10;
   const rowHeight = 36;
   const headerHeight = 40;
+  // eslint-disable-next-line react-hooks/incompatible-library
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => parentRef.current,

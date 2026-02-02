@@ -428,7 +428,7 @@ function overviewPage(ctx: DocsContext): DocsPage {
   };
 }
 
-function quickstartPage(_ctx: DocsContext): DocsPage {
+function quickstartPage(): DocsPage {
   return {
     slug: "quickstart",
     title: "Quickstart",
@@ -485,7 +485,7 @@ function quickstartPage(_ctx: DocsContext): DocsPage {
   };
 }
 
-function csvPage(_ctx: DocsContext): DocsPage {
+function csvPage(): DocsPage {
   return {
     slug: "import-csv",
     title: "Import CSV",
@@ -571,7 +571,7 @@ function csvPage(_ctx: DocsContext): DocsPage {
   };
 }
 
-function excelPage(_ctx: DocsContext): DocsPage {
+function excelPage(): DocsPage {
   if (!supportsExcel) {
     return {
       slug: "import-excel",
@@ -658,7 +658,7 @@ function excelPage(_ctx: DocsContext): DocsPage {
   };
 }
 
-function sessionPage(_ctx: DocsContext): DocsPage {
+function sessionPage(): DocsPage {
   return {
     slug: "session",
     title: "Session persistence",
@@ -714,7 +714,7 @@ function sessionPage(_ctx: DocsContext): DocsPage {
   };
 }
 
-function exportPage(_ctx: DocsContext): DocsPage {
+function exportPage(): DocsPage {
   return {
     slug: "export",
     title: "Export results",
@@ -761,7 +761,7 @@ function exportPage(_ctx: DocsContext): DocsPage {
   };
 }
 
-function troubleshootingPage(_ctx: DocsContext): DocsPage {
+function troubleshootingPage(): DocsPage {
   const sections: DocsSection[] = [
     {
       id: "missing-tables",

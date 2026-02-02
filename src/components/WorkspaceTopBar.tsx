@@ -11,9 +11,6 @@ type WorkspaceTopBarProps = {
   lastRunLabel: string;
   showingLabel: string;
   modeLabel?: string | null;
-  onRun: () => void;
-  runDisabled?: boolean;
-  runDisabledReason?: string;
   running?: boolean;
   onExport?: () => void;
   exportDisabled?: boolean;
@@ -36,9 +33,6 @@ export function WorkspaceTopBar({
   lastRunLabel,
   showingLabel,
   modeLabel = null,
-  onRun,
-  runDisabled = false,
-  runDisabledReason,
   running = false,
   onExport,
   exportDisabled = false,

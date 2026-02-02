@@ -42,7 +42,7 @@ import type { WorkerProgress } from "@/src/lib/duckdb-worker-types";
 import { getWhyUpgradeBullets } from "@/src/lib/planDisplay";
 import { getLimitText } from "@/src/lib/limitText";
 import { can } from "@/src/billing/plan";
-import { ReasonMessages, getUpgradeFix } from "@/src/billing/reasons";
+import { getUpgradeFix } from "@/src/billing/reasons";
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
   ssr: false,
@@ -333,9 +333,6 @@ export function WorkspaceEditor() {
   const [expandedTables, setExpandedTables] = useState<Set<string>>(new Set());
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
   const [activePanel, setActivePanel] = useState<"results" | "saved">("results");
-  const [inferBusyTables, setInferBusyTables] = useState<Set<string>>(
-    new Set()
-  );
   const [pendingDeleteQuery, setPendingDeleteQuery] = useState<{
     id: string;
     name: string;
@@ -409,18 +406,6 @@ export function WorkspaceEditor() {
       (entry) => !tableNames.has(entry.tableName) && !entry.hasHandle
     );
   }, [persistedAttachments, schema]);
-
-  const markInferBusy = useCallback((tableName: string, busy: boolean) => {
-    setInferBusyTables((current) => {
-      const next = new Set(current);
-      if (busy) {
-        next.add(tableName);
-      } else {
-        next.delete(tableName);
-      }
-      return next;
-    });
-  }, []);
 
   const isMissingTableError = useCallback((err: unknown) => {
     if (!err) {
@@ -733,93 +718,6 @@ export function WorkspaceEditor() {
     ]
   );
 
-  const handleInferTypesForTable = useCallback(
-    async (tableName: string) => {
-      const entry = attachedFilesByTable.get(tableName);
-      if (!entry || entry.fileType !== "csv" || entry.inferredTypes) {
-        return;
-      }
-      const inferenceSizeThreshold = Math.min(
-        512 * 1024 * 1024,
-        limits.maxSessionFileBytes * 0.4
-      );
-      if (entry.fileSize && entry.fileSize > inferenceSizeThreshold) {
-        setError(
-          `Imported as text to keep things stable. File size ${formatBytes(
-            entry.fileSize
-          )} is above ${formatBytes(
-            inferenceSizeThreshold
-          )}. Try changing column types in SQL.`
-        );
-        return;
-      }
-      const thresholdBytes = limits.maxSessionFileBytes * 0.8;
-      if (totalAttachedBytes >= thresholdBytes) {
-        setError(
-          `Imported as text to keep things stable. Session usage is ${formatBytes(
-            totalAttachedBytes
-          )} / ${formatBytes(
-            limits.maxSessionFileBytes
-          )}. Try detaching tables, splitting files, or changing column types in SQL.`
-        );
-        return;
-      }
-      markInferBusy(tableName, true);
-      setStatus("Detecting column types");
-      setError(null);
-      try {
-        const result = await enqueueWorkspaceTask(consoleKey, async () =>
-          duckdb.inferCsvTypes(
-            consoleKey,
-            entry.tableName,
-            {
-              delimiter: coerceCsvDelimiter(entry.csvDelimiter),
-              header: entry.csvHeader ?? true,
-            },
-            (progress) => {
-              if (progress.stage) {
-                setStatus(progress.stage);
-              }
-            }
-          )
-        );
-        setAttachedFiles((current) =>
-          current.map((item) =>
-            item.tableName === entry.tableName
-              ? {
-                  ...item,
-                  inferredTypes: true,
-                  csvDelimiter: result.delimiter,
-                }
-              : item
-          )
-        );
-        await refreshSchema();
-      } catch (err) {
-        setError(
-          `Imported as text to keep things stable. Session usage is ${formatBytes(
-            totalAttachedBytes
-          )} / ${formatBytes(
-            limits.maxSessionFileBytes
-          )}. Try detaching tables, splitting files, or changing column types in SQL.`
-        );
-      } finally {
-        markInferBusy(tableName, false);
-        setStatus("Ready");
-      }
-    },
-    [
-      attachedFilesByTable,
-      consoleKey,
-      duckdb,
-      limits.maxSessionFileBytes,
-      markInferBusy,
-      refreshSchema,
-      setAttachedFiles,
-      totalAttachedBytes,
-    ]
-  );
-
   const handleCsvImport = useCallback(
     async (payload: {
       file: File;
@@ -858,7 +756,6 @@ export function WorkspaceEditor() {
       }
       const fileGate = can("attach_file", { plan, fileSize: file.size });
       if (fileGate !== true) {
-        const reason = fileGate.reason;
         if (plan === "pro") {
           setError(
             `This file is larger than your limit. Try a smaller file or split it.`
@@ -892,7 +789,6 @@ export function WorkspaceEditor() {
         totalSize: nextTotal,
       });
       if (sessionGate !== true) {
-        const reason = sessionGate.reason;
         if (plan === "pro") {
           setError(
             "You're at the session limit. Detach a table or use smaller files."
@@ -1101,8 +997,12 @@ export function WorkspaceEditor() {
       setAttachedFiles,
       setShowUpgradeModal,
       setUpgradeContent,
+      supportsExcel,
       supportsParquet,
       totalAttachedBytes,
+      trial.hasEnded,
+      trialUpgradeNote,
+      upgradeTitle,
     ]
   );
 
@@ -1755,13 +1655,10 @@ export function WorkspaceEditor() {
         lastRunLabel={`${(runtimeMs / 1000).toFixed(2)}s`}
         showingLabel={showingLabel}
         modeLabel={hasRun ? modeLabel : null}
-        onRun={runQuery}
         onAttach={handleAttachClick}
         onExport={() => setShowExportModal(true)}
         attachLabel={attachLabel}
         importDisabled={importing}
-        runDisabled={runDisabled}
-        runDisabledReason={runDisabledReason}
         running={status === "Running"}
         exportDisabled={exportDisabled}
         exporting={exporting}
@@ -2217,7 +2114,7 @@ export function WorkspaceEditor() {
                   theme="vs-light"
                   value={sql}
                   onChange={(value) => updateActiveTab({ sql: value ?? "" })}
-                  onMount={(editor, _monaco) => {
+                  onMount={(editor) => {
                     editorRef.current = editor;
                   }}
                   options={{
