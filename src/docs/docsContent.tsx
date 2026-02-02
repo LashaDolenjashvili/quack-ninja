@@ -165,17 +165,17 @@ function planCapsTable() {
 export function getDocsPage(slug: string, ctx: DocsContext): DocsPage {
   switch (slug) {
     case "quickstart":
-      return quickstartPage(ctx);
+      return quickstartPage();
     case "import-csv":
-      return csvPage(ctx);
+      return csvPage();
     case "import-excel":
-      return excelPage(ctx);
+      return excelPage();
     case "session":
-      return sessionPage(ctx);
+      return sessionPage();
     case "export":
-      return exportPage(ctx);
+      return exportPage();
     case "troubleshooting":
-      return troubleshootingPage(ctx);
+      return troubleshootingPage();
     default:
       return overviewPage(ctx);
   }
