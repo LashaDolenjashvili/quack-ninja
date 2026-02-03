@@ -447,6 +447,12 @@ export default function MarketingPage() {
               FAQ
             </a>
             <a
+              href="/terms"
+              className="rounded-sm text-white/85 underline-offset-4 transition hover:text-white hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            >
+              Terms
+            </a>
+            <a
               href="/auth/sign-in"
               className="rounded-sm text-white/85 underline-offset-4 transition hover:text-white hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             >
