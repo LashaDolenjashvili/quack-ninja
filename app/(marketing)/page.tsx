@@ -4,6 +4,7 @@ import { marketingStyles } from "@/src/components/Marketing/marketingStyles";
 import { LandingSection } from "@/src/components/Marketing/LandingSection";
 import { AuthAwareCta } from "@/src/components/Marketing/AuthAwareCta";
 import { Logo } from "@/src/components/Logo";
+import { MarketingFooter } from "@/src/components/layout/MarketingFooter";
 import { AppHeader } from "@/src/components/layout/AppHeader";
 import { FeatureFlags } from "@/src/config/flags";
 import { getPlanDisplay } from "@/src/lib/planDisplay";
@@ -421,49 +422,7 @@ export default function MarketingPage() {
           </div>
       </LandingSection>
 
-      <footer className="bg-[#002D5A] py-10 text-white">
-        <div className="h-px w-full bg-gradient-to-r from-white/0 via-white/15 to-white/0" />
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 pt-8 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center">
-            <Logo showText />
-          </div>
-          <div className="flex flex-wrap gap-4 text-sm text-white/80">
-            <a
-              href="#how"
-              className="rounded-sm text-white/85 underline-offset-4 transition hover:text-white hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-            >
-              How it works
-            </a>
-            <a
-              href="#pricing"
-              className="rounded-sm text-white/85 underline-offset-4 transition hover:text-white hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-            >
-              Pricing
-            </a>
-            <a
-              href="#faq"
-              className="rounded-sm text-white/85 underline-offset-4 transition hover:text-white hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-            >
-              FAQ
-            </a>
-            <a
-              href="/terms"
-              className="rounded-sm text-white/85 underline-offset-4 transition hover:text-white hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-            >
-              Terms
-            </a>
-            <a
-              href="/auth/sign-in"
-              className="rounded-sm text-white/85 underline-offset-4 transition hover:text-white hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-            >
-              Sign in
-            </a>
-          </div>
-          <p className="text-xs text-white/70">
-            Runs in your browser. Files stay on your computer.
-          </p>
-        </div>
-      </footer>
+      <MarketingFooter />
     </main>
   );
 }
