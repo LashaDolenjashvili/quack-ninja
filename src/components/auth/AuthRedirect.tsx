@@ -2,8 +2,8 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { supabase, supabaseConfigured } from "@/src/lib/supabaseClient";
-import { logClientError } from "@/src/lib/logger";
+import { supabaseConfigured } from "@/src/lib/supabaseClient";
+import { useAuth } from "@/src/components/auth/AuthProvider";
 
 type AuthRedirectProps = {
   skip?: boolean;
@@ -11,49 +11,20 @@ type AuthRedirectProps = {
 
 export function AuthRedirect({ skip = false }: AuthRedirectProps) {
   const router = useRouter();
+  const { user, loading } = useAuth();
 
   useEffect(() => {
-    let active = true;
-
     if (skip) {
-      return () => {
-        active = false;
-      };
+      return;
     }
 
     if (!supabaseConfigured) {
-      return () => {
-        active = false;
-      };
+      return;
     }
-
-    const ensureSignedOut = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!active) {
-        return;
-      }
-      if (data.session) {
-        router.replace("/app/console");
-      }
-    };
-
-    ensureSignedOut().catch((err) => {
-      logClientError(err, "Auth redirect session check failed");
-    });
-
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        if (session) {
-          router.replace("/app/console");
-        }
-      }
-    );
-
-    return () => {
-      active = false;
-      listener.subscription?.unsubscribe();
-    };
-  }, [router, skip]);
+    if (!loading && user) {
+      router.replace("/app/console");
+    }
+  }, [loading, router, skip, user]);
 
   return null;
 }

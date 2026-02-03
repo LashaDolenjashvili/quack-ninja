@@ -3,6 +3,7 @@ import { Quicksand } from "next/font/google";
 import { NavigationLogger } from "@/src/components/NavigationLogger";
 import { Suspense } from "react";
 import { QueryProvider } from "@/src/components/QueryProvider";
+import { Providers } from "./providers";
 import "../src/styles/globals.css";
 
 const quicksand = Quicksand({
@@ -35,10 +36,12 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${quicksand.variable} antialiased`}>
         <QueryProvider>
-          <Suspense fallback={null}>
-            <NavigationLogger />
-          </Suspense>
-          {children}
+          <Providers>
+            <Suspense fallback={null}>
+              <NavigationLogger />
+            </Suspense>
+            {children}
+          </Providers>
         </QueryProvider>
       </body>
     </html>

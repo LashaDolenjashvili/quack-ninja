@@ -22,7 +22,7 @@ async function fetchProfile(): Promise<BillingProfile | null> {
     .from("profiles")
     .select("id, email, plan, is_admin")
     .eq("id", user.id)
-    .maybeSingle();
+    .maybeSingle<BillingProfile>();
   const plan = parsePlanTier(data?.plan);
   return {
     id: user.id,

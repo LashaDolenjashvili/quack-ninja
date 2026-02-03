@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { supabase, supabaseConfigured } from "@/src/lib/supabaseClient";
+import { useMemo } from "react";
 import { TRIAL_ENABLED_CLIENT, TRIAL_DAYS } from "@/src/lib/trial";
 import { OpenConsoleButton } from "@/src/components/Marketing/OpenConsoleButton";
 import { cx } from "@/src/components/ui/classNames";
+import { useAuth } from "@/src/components/auth/AuthProvider";
 
 type AuthAwareCtaProps = {
   size?: "sm" | "md" | "lg";
@@ -22,26 +22,8 @@ export function AuthAwareCta({
   signedInExtras,
   signedOutExtras,
 }: AuthAwareCtaProps) {
-  const [status, setStatus] = useState<"loading" | "in" | "out">("loading");
-
-  useEffect(() => {
-    let active = true;
-    if (!supabaseConfigured) {
-      setStatus("out");
-      return () => {
-        active = false;
-      };
-    }
-    supabase.auth.getSession().then(({ data }) => {
-      if (!active) {
-        return;
-      }
-      setStatus(data.session ? "in" : "out");
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
+  const { user, loading } = useAuth();
+  const status = loading ? "loading" : user ? "in" : "out";
 
   const signedOutLabel = useMemo(
     () => (TRIAL_ENABLED_CLIENT ? `Start ${TRIAL_DAYS}-day Pro trial` : "Start free"),
