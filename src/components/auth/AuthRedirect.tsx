@@ -5,11 +5,21 @@ import { useRouter } from "next/navigation";
 import { supabase, supabaseConfigured } from "@/src/lib/supabaseClient";
 import { logClientError } from "@/src/lib/logger";
 
-export function AuthRedirect() {
+type AuthRedirectProps = {
+  skip?: boolean;
+};
+
+export function AuthRedirect({ skip = false }: AuthRedirectProps) {
   const router = useRouter();
 
   useEffect(() => {
     let active = true;
+
+    if (skip) {
+      return () => {
+        active = false;
+      };
+    }
 
     if (!supabaseConfigured) {
       return () => {
@@ -43,7 +53,7 @@ export function AuthRedirect() {
       active = false;
       listener.subscription?.unsubscribe();
     };
-  }, [router]);
+  }, [router, skip]);
 
   return null;
 }
