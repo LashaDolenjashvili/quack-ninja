@@ -132,7 +132,8 @@ export function WorkspaceEditor() {
   const trialCountdown = useTrialCountdown(
     trial.serverNow,
     trial.endsAt,
-    trial.active
+    trial.active,
+    trial.startedAt
   );
   const trialEndsAtLabel = useMemo(
     () => (trial.active ? formatTrialEndDate(trial.endsAt) : null),
