@@ -15,7 +15,7 @@ import {
 } from "@/src/duckdb/runtimeCache";
 import { getDuckDBClient } from "@/src/duckdb/duckdbSingleton";
 import { getSavedQueriesEventName, listSavedQueries } from "@/src/db/indexeddb";
-import { supabase, supabaseConfigured } from "@/src/lib/supabaseClient";
+import { useAuth } from "@/src/components/auth/AuthProvider";
 import {
   loadSessionSnapshot,
   saveSessionSnapshot,
@@ -191,7 +191,10 @@ export function ConsoleSessionProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const [consoleId, setConsoleId] = useState("console");
+  const { user, loading: authLoading } = useAuth();
+  const [consoleId, setConsoleId] = useState(() =>
+    user?.id ? `console-${user.id}` : "console"
+  );
   const [tables, setTables] = useState<
     { name: string; columns: { name: string; type: string }[] }[]
   >([]);
@@ -321,21 +324,12 @@ export function ConsoleSessionProvider({
   );
 
   useEffect(() => {
-    if (!supabaseConfigured) {
+    if (authLoading) {
       return;
     }
-    let active = true;
-    supabase.auth.getUser().then(({ data }) => {
-      if (!active) {
-        return;
-      }
-      const userId = data.user?.id;
-      setConsoleId(userId ? `console-${userId}` : "console");
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
+    const userId = user?.id ?? null;
+    setConsoleId(userId ? `console-${userId}` : "console");
+  }, [authLoading, user?.id]);
 
   useEffect(() => {
     const runtime = getConsoleRuntime(consoleId);

@@ -34,7 +34,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${quicksand.variable} antialiased`}>
+      <body
+        className={`${quicksand.variable} antialiased`}
+        suppressHydrationWarning
+      >
         <QueryProvider>
           <Providers>
             <Suspense fallback={null}>

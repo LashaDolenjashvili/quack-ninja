@@ -1,8 +1,17 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase, supabaseConfigured } from "@/src/lib/supabaseClient";
+import { replaceAttachedSources } from "@/src/db/indexeddb";
+import { clearSessionSnapshot } from "@/src/session/persistence";
 
 type AuthState = {
   user: User | null;
@@ -22,6 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     session: null,
     loading: true,
   });
+  const lastUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!supabaseConfigured) {
@@ -32,6 +42,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     supabase.auth.getSession().then(({ data }) => {
       if (!active) {
         return;
+      }
+      if (data.session?.user?.id) {
+        lastUserIdRef.current = data.session.user.id;
       }
       setState({
         user: data.session?.user ?? null,
@@ -44,6 +57,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       (_event, session) => {
         if (!active) {
           return;
+        }
+        if (session?.user?.id) {
+          lastUserIdRef.current = session.user.id;
+        } else if (lastUserIdRef.current) {
+          const consoleId = `console-${lastUserIdRef.current}`;
+          void replaceAttachedSources([], consoleId);
+          void clearSessionSnapshot(consoleId);
+          lastUserIdRef.current = null;
         }
         setState({
           user: session?.user ?? null,

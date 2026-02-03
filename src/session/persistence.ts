@@ -28,16 +28,23 @@ type SessionSchema = DBSchema & {
 const DB_NAME = "filesql-session";
 const DB_VERSION = 1;
 
-const dbPromise = openDB<SessionSchema>(DB_NAME, DB_VERSION, {
-  upgrade(db) {
-    if (!db.objectStoreNames.contains("sessionSnapshots")) {
-      db.createObjectStore("sessionSnapshots", { keyPath: "id" });
-    }
-  },
-});
+let dbPromise: ReturnType<typeof openDB<SessionSchema>> | null = null;
+
+function getDb() {
+  if (!dbPromise) {
+    dbPromise = openDB<SessionSchema>(DB_NAME, DB_VERSION, {
+      upgrade(db) {
+        if (!db.objectStoreNames.contains("sessionSnapshots")) {
+          db.createObjectStore("sessionSnapshots", { keyPath: "id" });
+        }
+      },
+    });
+  }
+  return dbPromise;
+}
 
 export async function loadSessionSnapshot(id: string) {
-  const db = await dbPromise;
+  const db = await getDb();
   return (await db.get("sessionSnapshots", id)) ?? null;
 }
 
@@ -49,7 +56,7 @@ export async function saveSessionSnapshot(
     activeTabId?: string | null;
   }
 ) {
-  const db = await dbPromise;
+  const db = await getDb();
   const snapshot: SessionSnapshot = {
     id,
     attachedFiles: payload.attachedFiles,
@@ -61,6 +68,6 @@ export async function saveSessionSnapshot(
 }
 
 export async function clearSessionSnapshot(id: string) {
-  const db = await dbPromise;
+  const db = await getDb();
   await db.delete("sessionSnapshots", id);
 }
