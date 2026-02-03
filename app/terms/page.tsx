@@ -81,6 +81,24 @@ export default function TermsPage() {
             changes, we will update the “Last updated” date above.
           </p>
 
+          <h2 className="text-lg font-semibold text-white">
+            Privacy Policy
+          </h2>
+          <p>
+            QuackNinja is designed to keep your files on your computer during
+            normal use. We do not upload file contents by default. Please review
+            our Privacy Policy for details about account data and service
+            operations.
+          </p>
+
+          <h2 className="text-lg font-semibold text-white">Refund Policy</h2>
+          <p>
+            If you are on a paid plan and believe you were billed in error,
+            contact support. We will review refund requests on a case-by-case
+            basis according to applicable laws and our payment provider’s
+            policies.
+          </p>
+
           <h2 className="text-lg font-semibold text-white">Contact</h2>
           <p>
             Questions? Email{" "}
