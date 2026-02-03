@@ -71,65 +71,72 @@ const DB_NAME = "filesql";
 const DB_VERSION = 5;
 const savedQueriesEvent = "filesql-saved-queries-changed";
 
-const dbPromise = openDB<FileSQLSchema>(DB_NAME, DB_VERSION, {
-  upgrade(db, oldVersion, _newVersion, transaction) {
-    if ((db.objectStoreNames as DOMStringList).contains("workspaces")) {
-      db.deleteObjectStore("workspaces" as "savedQueries");
-    }
+let dbPromise: ReturnType<typeof openDB<FileSQLSchema>> | null = null;
 
-    if (!db.objectStoreNames.contains("savedQueries")) {
-      db.createObjectStore("savedQueries", {
-        keyPath: "id",
-      });
-    }
+function getDb() {
+  if (!dbPromise) {
+    dbPromise = openDB<FileSQLSchema>(DB_NAME, DB_VERSION, {
+      upgrade(db, oldVersion, _newVersion, transaction) {
+        if ((db.objectStoreNames as DOMStringList).contains("workspaces")) {
+          db.deleteObjectStore("workspaces" as "savedQueries");
+        }
 
-    if (!db.objectStoreNames.contains("fileHandles")) {
-      db.createObjectStore("fileHandles", {
-        keyPath: "id",
-      });
-    }
+        if (!db.objectStoreNames.contains("savedQueries")) {
+          db.createObjectStore("savedQueries", {
+            keyPath: "id",
+          });
+        }
 
-    if (!db.objectStoreNames.contains("attachedSources")) {
-      db.createObjectStore("attachedSources", {
-        keyPath: "id",
-      });
-    }
+        if (!db.objectStoreNames.contains("fileHandles")) {
+          db.createObjectStore("fileHandles", {
+            keyPath: "id",
+          });
+        }
 
-    if (
-      oldVersion < 5 &&
-      db.objectStoreNames.contains("fileHandles") &&
-      db.objectStoreNames.contains("attachedSources") &&
-      transaction
-    ) {
-      const fileHandles = transaction.objectStore("fileHandles");
-      const attachedSources = transaction.objectStore("attachedSources");
-      fileHandles.getAll().then((entries) => {
-        entries.forEach((entry) => {
-          const sourceType = entry.fileType ?? "csv";
-          const options: AttachedSourceOptions = {
-            delimiter: entry.csvDelimiter ?? entry.csvOptions?.delimiter ?? null,
-            header: entry.csvHeader ?? entry.csvOptions?.header ?? true,
-            sheetName: entry.sheetName ?? null,
-            headerRow: entry.headerRow ?? undefined,
-            range: entry.range ?? null,
-          };
-          const record: AttachedSourceEntry = {
-            id: entry.id,
-            workspaceId: entry.workspaceId,
-            tableName: entry.tableName,
-            fileName: entry.fileName,
-            sourceType,
-            fileHandle: entry.handle,
-            options,
-            inferredTypes: entry.inferredTypes ?? false,
-            attachedAt: Date.now(),
-          };
-          attachedSources.put(record);
-        });
-      });
-    }
-  },
-});
+        if (!db.objectStoreNames.contains("attachedSources")) {
+          db.createObjectStore("attachedSources", {
+            keyPath: "id",
+          });
+        }
+
+        if (
+          oldVersion < 5 &&
+          db.objectStoreNames.contains("fileHandles") &&
+          db.objectStoreNames.contains("attachedSources") &&
+          transaction
+        ) {
+          const fileHandles = transaction.objectStore("fileHandles");
+          const attachedSources = transaction.objectStore("attachedSources");
+          fileHandles.getAll().then((entries) => {
+            entries.forEach((entry) => {
+              const sourceType = entry.fileType ?? "csv";
+              const options: AttachedSourceOptions = {
+                delimiter: entry.csvDelimiter ?? entry.csvOptions?.delimiter ?? null,
+                header: entry.csvHeader ?? entry.csvOptions?.header ?? true,
+                sheetName: entry.sheetName ?? null,
+                headerRow: entry.headerRow ?? undefined,
+                range: entry.range ?? null,
+              };
+              const record: AttachedSourceEntry = {
+                id: entry.id,
+                workspaceId: entry.workspaceId,
+                tableName: entry.tableName,
+                fileName: entry.fileName,
+                sourceType,
+                fileHandle: entry.handle,
+                options,
+                inferredTypes: entry.inferredTypes ?? false,
+                attachedAt: Date.now(),
+              };
+              attachedSources.put(record);
+            });
+          });
+        }
+      },
+    });
+  }
+  return dbPromise;
+}
 
 function emitSavedQueriesEvent() {
   if (typeof window !== "undefined") {
@@ -142,7 +149,7 @@ export function getSavedQueriesEventName() {
 }
 
 export async function listSavedQueries() {
-  const db = await dbPromise;
+  const db = await getDb();
   const items = await db.getAll("savedQueries");
   return items.filter((item) => !item.deletedAt);
 }
@@ -151,7 +158,7 @@ export async function createSavedQuery(
   name: string,
   sql: string
 ) {
-  const db = await dbPromise;
+  const db = await getDb();
   const now = Date.now();
   const savedQuery: SavedQuery = {
     id: crypto.randomUUID(),
@@ -168,7 +175,7 @@ export async function createSavedQuery(
 }
 
 export async function deleteSavedQuery(id: string) {
-  const db = await dbPromise;
+  const db = await getDb();
   const current = await db.get("savedQueries", id);
   if (!current) {
     return;
@@ -181,7 +188,7 @@ export async function deleteSavedQuery(id: string) {
 }
 
 export async function renameSavedQuery(id: string, name: string) {
-  const db = await dbPromise;
+  const db = await getDb();
   const current = await db.get("savedQueries", id);
   if (!current) {
     return;
@@ -198,7 +205,7 @@ export async function saveFileHandle(
   entry: Omit<FileHandleEntry, "id">,
   workspaceId = CONSOLE_ID
 ) {
-  const db = await dbPromise;
+  const db = await getDb();
   const record: FileHandleEntry = {
     id: crypto.randomUUID(),
     workspaceId,
@@ -212,7 +219,7 @@ export async function replaceFileHandles(
   entries: Omit<FileHandleEntry, "id">[],
   workspaceId = CONSOLE_ID
 ) {
-  const db = await dbPromise;
+  const db = await getDb();
   const tx = db.transaction("fileHandles", "readwrite");
   const existing = await tx.store.getAll();
   for (const entry of existing) {
@@ -232,7 +239,7 @@ export async function replaceFileHandles(
 }
 
 export async function listFileHandles(workspaceId = CONSOLE_ID) {
-  const db = await dbPromise;
+  const db = await getDb();
   const entries = await db.getAll("fileHandles");
   return entries.filter((entry) => entry.workspaceId === workspaceId);
 }
@@ -241,7 +248,7 @@ export async function replaceAttachedSources(
   entries: Omit<AttachedSourceEntry, "id">[],
   workspaceId = CONSOLE_ID
 ) {
-  const db = await dbPromise;
+  const db = await getDb();
   const tx = db.transaction("attachedSources", "readwrite");
   const existing = await tx.store.getAll();
   for (const entry of existing) {
@@ -261,12 +268,12 @@ export async function replaceAttachedSources(
 }
 
 export async function listAttachedSources(workspaceId = CONSOLE_ID) {
-  const db = await dbPromise;
+  const db = await getDb();
   const entries = await db.getAll("attachedSources");
   return entries.filter((entry) => entry.workspaceId === workspaceId);
 }
 
 export async function deleteFileHandle(id: string) {
-  const db = await dbPromise;
+  const db = await getDb();
   await db.delete("fileHandles", id);
 }
