@@ -6,7 +6,8 @@ import { formatTrialCountdown } from "@/src/lib/trial";
 export function useTrialCountdown(
   serverNowIso: string | null,
   endsAtIso: string | null,
-  active: boolean
+  active: boolean,
+  startedAtIso?: string | null
 ) {
   const [baseNow, setBaseNow] = useState(() =>
     serverNowIso ? new Date(serverNowIso).getTime() : Date.now()
@@ -33,6 +34,6 @@ export function useTrialCountdown(
       return null;
     }
     const nowMs = baseNow + tick * 60 * 1000;
-    return formatTrialCountdown(nowMs, endsAtIso);
-  }, [active, baseNow, endsAtIso, tick]);
+    return formatTrialCountdown(nowMs, endsAtIso, startedAtIso);
+  }, [active, baseNow, endsAtIso, startedAtIso, tick]);
 }
