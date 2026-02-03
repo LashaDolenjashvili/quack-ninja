@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Banner } from "@/src/components/ui/banner";
 import { Button } from "@/src/components/ui/button";
 import { supabase, supabaseConfigured } from "@/src/lib/supabaseClient";
-import { TRIAL_ENABLED_CLIENT, TRIAL_DAYS } from "@/src/lib/trial";
+import { TRIAL_ENABLED_CLIENT } from "@/src/lib/trial";
 import { logClientError } from "@/src/lib/logger";
 import Link from "next/link";
 
@@ -20,14 +20,12 @@ export function AuthForm({ mode }: AuthFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
-    setNotice(null);
     setLoading(true);
 
     try {
@@ -80,11 +78,9 @@ export function AuthForm({ mode }: AuthFormProps) {
         }
       }
 
-      if (mode === "sign-up" && TRIAL_ENABLED_CLIENT) {
-        setNotice(`✅ Pro trial started — ${TRIAL_DAYS} days left. Check your email to confirm your account.`);
-        setTimeout(() => {
-          router.replace("/app/console");
-        }, 800);
+      if (mode === "sign-up") {
+        const emailParam = email ? `&email=${encodeURIComponent(email)}` : "";
+        router.replace(`/auth/sign-in?notice=confirm_email${emailParam}`);
         return;
       }
       router.replace("/app/console");
@@ -145,9 +141,6 @@ export function AuthForm({ mode }: AuthFormProps) {
         <div className="rounded-lg border border-[#E6EEF7] bg-[#F7FAFC] px-3 py-2 text-xs text-[#5B6B82]">
           Creating an account starts your 7-day Pro trial.
         </div>
-      ) : null}
-      {notice ? (
-        <Banner tone="success">{notice}</Banner>
       ) : null}
       {error ? (
         <Banner tone="warning">{error}</Banner>

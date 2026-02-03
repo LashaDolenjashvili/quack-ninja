@@ -2,8 +2,25 @@ import Link from "next/link";
 import { AuthRedirect } from "@/src/components/auth/AuthRedirect";
 import { AuthForm } from "@/src/components/auth/AuthForm";
 import { AuthPageLayout } from "@/src/components/auth/AuthPageLayout";
+import { ConfirmEmailNotice } from "@/src/components/auth/ConfirmEmailNotice";
 
-export default function SignInPage() {
+type SignInPageProps = {
+  searchParams?: {
+    notice?: string | string[];
+    email?: string | string[];
+  };
+};
+
+export default function SignInPage({ searchParams }: SignInPageProps) {
+  const notice =
+    typeof searchParams?.notice === "string"
+      ? searchParams.notice
+      : searchParams?.notice?.[0];
+  const email =
+    typeof searchParams?.email === "string"
+      ? searchParams.email
+      : searchParams?.email?.[0];
+  const showConfirmNotice = notice === "confirm_email";
   return (
     <>
       {/* Checklist:
@@ -11,7 +28,7 @@ export default function SignInPage() {
           - Added info panel for trust cues
           - Improved copy + accessibility
       */}
-      <AuthRedirect />
+      <AuthRedirect skip={showConfirmNotice} />
       <AuthPageLayout
         title="Sign in"
         subtitle="Welcome back to QuackNinja"
@@ -21,6 +38,7 @@ export default function SignInPage() {
           </p>
         }
       >
+        <ConfirmEmailNotice notice={notice} email={email} />
         <AuthForm mode="sign-in" />
         <p className="mt-6 text-sm text-[#5B6B82]">
           Need an account?{" "}
