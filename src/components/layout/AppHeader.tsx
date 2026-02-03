@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase, supabaseConfigured } from "@/src/lib/supabaseClient";
 import { usePlan } from "@/src/lib/usePlan";
 import { Logo } from "@/src/components/Logo";
+import { useAuth } from "@/src/components/auth/AuthProvider";
 
 type AppHeaderProps = {
   variant?: "landing" | "docs";
@@ -12,33 +13,8 @@ type AppHeaderProps = {
 
 export function AppHeader({ variant = "landing" }: AppHeaderProps) {
   const { plan, loading, trial } = usePlan();
-  const [status, setStatus] = useState<"loading" | "in" | "out">("loading");
-  const [email, setEmail] = useState<string | null>(null);
+  const { user, loading: authLoading } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    if (!supabaseConfigured) {
-      setStatus("out");
-      return () => {
-        active = false;
-      };
-    }
-    supabase.auth.getSession().then(({ data }) => {
-      if (!active) {
-        return;
-      }
-      if (data.session) {
-        setStatus("in");
-        setEmail(data.session.user.email ?? null);
-      } else {
-        setStatus("out");
-      }
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -54,6 +30,12 @@ export function AppHeader({ variant = "landing" }: AppHeaderProps) {
     if (trial?.active) return "Pro trial";
     return plan === "pro" ? "Pro" : "Free";
   }, [loading, plan, trial?.active]);
+
+  const status = authLoading
+    ? "loading"
+    : user
+      ? "in"
+      : "out";
 
   const headerClass =
     variant === "landing"
@@ -104,9 +86,9 @@ export function AppHeader({ variant = "landing" }: AppHeaderProps) {
               <span className="rounded-full border border-white/30 px-3 py-1 text-xs font-semibold text-white">
                 {planLabel}
               </span>
-              {email ? (
+              {user?.email ? (
                 <span className="hidden max-w-[160px] truncate text-xs text-white/80 md:inline">
-                  {email}
+                  {user.email}
                 </span>
               ) : null}
               <button
@@ -117,7 +99,7 @@ export function AppHeader({ variant = "landing" }: AppHeaderProps) {
                 Logout
               </button>
             </div>
-          ) : status === "out" ? (
+          ) : !authLoading ? (
             <Link href="/auth/sign-in" className={outlineButtonClass}>
               Sign in
             </Link>

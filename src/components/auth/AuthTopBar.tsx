@@ -1,33 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { supabase, supabaseConfigured } from "@/src/lib/supabaseClient";
+import { useMemo } from "react";
+import { useAuth } from "@/src/components/auth/AuthProvider";
 import { cx } from "@/src/components/ui/classNames";
 import { Logo } from "@/src/components/Logo";
 import { usePathname } from "next/navigation";
 
 export function AuthTopBar() {
-  const [status, setStatus] = useState<"loading" | "in" | "out">("loading");
-
-  useEffect(() => {
-    let active = true;
-    if (!supabaseConfigured) {
-      setStatus("out");
-      return () => {
-        active = false;
-      };
-    }
-    supabase.auth.getSession().then(({ data }) => {
-      if (!active) {
-        return;
-      }
-      setStatus(data.session ? "in" : "out");
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
+  const { user, loading } = useAuth();
+  const status = useMemo(
+    () => (loading ? "loading" : user ? "in" : "out"),
+    [loading, user]
+  );
 
   const pathname = usePathname();
   const consoleHref = status === "in" ? "/app/console" : "/auth/sign-in";

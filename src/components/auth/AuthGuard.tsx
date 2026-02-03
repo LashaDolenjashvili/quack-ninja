@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { supabase, supabaseConfigured } from "@/src/lib/supabaseClient";
-import { logClientError } from "@/src/lib/logger";
+import { supabaseConfigured } from "@/src/lib/supabaseClient";
+import { useAuth } from "@/src/components/auth/AuthProvider";
 
 type AuthGuardProps = {
   children: React.ReactNode;
@@ -11,51 +11,18 @@ type AuthGuardProps = {
 
 export function AuthGuard({ children }: AuthGuardProps) {
   const router = useRouter();
-  const [ready, setReady] = useState(false);
+  const { user, loading } = useAuth();
 
   useEffect(() => {
-    let active = true;
-
     if (!supabaseConfigured) {
-      setReady(true);
-      return () => {
-        active = false;
-      };
+      return;
     }
+    if (!loading && !user) {
+      router.replace("/auth/sign-in");
+    }
+  }, [loading, router, user]);
 
-    const ensureSession = async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!active) {
-        return;
-      }
-      if (!data.session) {
-        router.replace("/auth/sign-in");
-        return;
-      }
-      setReady(true);
-    };
-
-    ensureSession().catch((err) => {
-      logClientError(err, "Auth guard session check failed");
-    });
-
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        if (!session) {
-          router.replace("/auth/sign-in");
-          return;
-        }
-        setReady(true);
-      }
-    );
-
-    return () => {
-      active = false;
-      listener.subscription?.unsubscribe();
-    };
-  }, [router]);
-
-  if (!ready) {
+  if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#F7FAFC] text-sm text-[#5B6B82]">
         Loading...
