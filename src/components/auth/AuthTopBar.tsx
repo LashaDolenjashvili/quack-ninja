@@ -31,7 +31,7 @@ export function AuthTopBar() {
           <Link href="/" className="rounded-md px-2 py-1 text-white/80 hover:text-white">
             Home
           </Link>
-          <Link href="/#pricing" className="rounded-md px-2 py-1 text-white/80 hover:text-white">
+          <Link href="/pricing" className="rounded-md px-2 py-1 text-white/80 hover:text-white">
             Pricing
           </Link>
           <Link href="/docs" className="rounded-md px-2 py-1 text-white/80 hover:text-white">

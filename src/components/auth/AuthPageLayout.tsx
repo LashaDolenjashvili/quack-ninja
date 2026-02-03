@@ -92,27 +92,33 @@ export function AuthPageLayout({
       <footer className="mt-10 bg-[#002D5A] py-6 text-white">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-6 text-sm sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-white/80">
-            QuackNinja — quick answers from your exports.
+            © {new Date().getFullYear()} QuackNinja
           </p>
           <div className="flex flex-wrap gap-4 text-xs text-white/80">
             <Link
-              href="/privacy"
-              className="rounded-sm underline-offset-4 hover:text-white hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-            >
-              Privacy
-            </Link>
-            <Link
-              href="/terms"
+              href="/terms-and-conditions"
               className="rounded-sm underline-offset-4 hover:text-white hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             >
               Terms
             </Link>
             <Link
-              href="/support"
+              href="/privacy-policy"
               className="rounded-sm underline-offset-4 hover:text-white hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             >
-              Support
+              Privacy
             </Link>
+            <Link
+              href="/refund-policy"
+              className="rounded-sm underline-offset-4 hover:text-white hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            >
+              Refunds
+            </Link>
+            <a
+              href="mailto:support@quackninja.com"
+              className="rounded-sm underline-offset-4 hover:text-white hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            >
+              Contact
+            </a>
           </div>
         </div>
       </footer>

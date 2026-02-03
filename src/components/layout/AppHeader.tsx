@@ -63,7 +63,7 @@ export function AppHeader({ variant = "landing" }: AppHeaderProps) {
             <Link href="/" className={navLinkClass}>
               Home
             </Link>
-            <Link href="/#pricing" className={navLinkClass}>
+            <Link href="/pricing" className={navLinkClass}>
               Pricing
             </Link>
             <Link href="/docs" className={navLinkClass}>
