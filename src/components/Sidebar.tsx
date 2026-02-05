@@ -72,7 +72,7 @@ export function Sidebar({
     <>
       <aside className="sticky top-0 flex h-screen w-[260px] flex-col bg-[#003C79] text-white">
         <div className="px-5 pt-6">
-          <Logo />
+          <Logo showMark={false} />
         </div>
 
         <div className="mt-8 flex flex-1 flex-col gap-6 px-5">

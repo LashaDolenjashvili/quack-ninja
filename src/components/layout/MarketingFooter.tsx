@@ -3,11 +3,11 @@ import { Logo } from "@/src/components/Logo";
 
 export function MarketingFooter() {
   return (
-    <footer className="bg-[#002D5A] py-10 text-white">
+    <footer className="bg-[#002D5A] text-white">
       <div className="h-px w-full bg-gradient-to-r from-white/0 via-white/15 to-white/0" />
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 pt-8 sm:flex-row sm:items-center sm:justify-between">
+      <div className="qn-container flex flex-col gap-6 py-10 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center">
-          <Logo showText />
+          <Logo showMark={false} showText />
         </div>
         <div className="flex flex-wrap gap-4 text-sm text-white/80">
           <Link

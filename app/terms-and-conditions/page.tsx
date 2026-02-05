@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
-import { AppHeader } from "@/src/components/layout/AppHeader";
-import { MarketingFooter } from "@/src/components/layout/MarketingFooter";
+import { LegalShell } from "@/src/components/layout/LegalShell";
+import { LegalCard } from "@/src/components/legal/LegalCard";
+import { LegalHeader } from "@/src/components/legal/LegalHeader";
+import { LegalTOC } from "@/src/components/legal/LegalTOC";
 
 export const metadata: Metadata = {
   title: "Terms and Conditions • QuackNinja",
@@ -10,20 +12,30 @@ export const metadata: Metadata = {
 
 export default function TermsAndConditionsPage() {
   return (
-    <main className="flex min-h-screen flex-col bg-[#F7FAFC] text-[#0B1220]">
-      <AppHeader variant="docs" />
-      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-6 pb-16 pt-28">
-        <header className="space-y-2">
-          <h1 className="text-3xl font-semibold">Terms of Service</h1>
-          <p className="text-sm text-[#5B6B82]">Last updated: 2026-02-03</p>
-        </header>
-
-        <section className="space-y-4 text-sm leading-6 text-[#0B1220]">
+    <LegalShell>
+      <LegalCard className="mx-auto w-full max-w-4xl space-y-8">
+        <LegalHeader
+          kicker="Terms"
+          title="Terms of Service"
+          updatedAt="2026-02-03"
+        />
+        <LegalTOC
+          items={[
+            { id: "the-service", label: "The Service" },
+            { id: "accounts", label: "Accounts" },
+            { id: "privacy-local-files", label: "Privacy & Local Files" },
+            { id: "payments-subscriptions", label: "Payments & Subscriptions" },
+            { id: "refunds", label: "Refunds" },
+            { id: "changes", label: "Changes" },
+            { id: "contact", label: "Contact" },
+          ]}
+        />
+        <section className="space-y-4 text-sm leading-relaxed text-slate-700">
           <p>
             QuackNinja is operated by{" "}
             <a
               href="https://www.linkedin.com/in/lasha-dolenjashvili/"
-              className="font-semibold text-[#003C79] underline underline-offset-4"
+              className="font-semibold text-[color:var(--color-primary)] underline underline-offset-4"
               target="_blank"
               rel="noreferrer"
             >
@@ -32,21 +44,26 @@ export default function TermsAndConditionsPage() {
             .
           </p>
 
-          <h2 className="text-lg font-semibold text-[#0B1220]">The Service</h2>
+          <h2 id="the-service" className="text-lg font-semibold text-[color:var(--text-primary)]">
+            The Service
+          </h2>
           <p>
-            QuackNinja provides a browser-based workspace to run SQL on CSV,
-            Excel (.xlsx), and Parquet exports. The product is designed for
-            quick answers from real exports and runs locally in your browser.
+            QuackNinja provides a browser-based workspace to run DuckDB SQL on
+            CSV, Excel (.xlsx), and Parquet exports. The product is designed
+            for quick answers from real exports and runs locally in your
+            browser.
           </p>
 
-          <h2 className="text-lg font-semibold text-[#0B1220]">Accounts</h2>
+          <h2 id="accounts" className="text-lg font-semibold text-[color:var(--text-primary)]">
+            Accounts
+          </h2>
           <p>
             You are responsible for activity on your account and for keeping
             your login credentials secure. Please provide accurate information
             and keep your account up to date.
           </p>
 
-          <h2 className="text-lg font-semibold text-[#0B1220]">
+          <h2 id="privacy-local-files" className="text-lg font-semibold text-[color:var(--text-primary)]">
             Privacy &amp; Local Files
           </h2>
           <p>
@@ -54,7 +71,7 @@ export default function TermsAndConditionsPage() {
             normal use. We do not upload file contents by default.
           </p>
 
-          <h2 className="text-lg font-semibold text-[#0B1220]">
+          <h2 id="payments-subscriptions" className="text-lg font-semibold text-[color:var(--text-primary)]">
             Payments &amp; Subscriptions
           </h2>
           <p>
@@ -63,38 +80,43 @@ export default function TermsAndConditionsPage() {
             select unless you cancel.
           </p>
 
-          <h2 className="text-lg font-semibold text-[#0B1220]">Refunds</h2>
+          <h2 id="refunds" className="text-lg font-semibold text-[color:var(--text-primary)]">
+            Refunds
+          </h2>
           <p>
             Refund terms are described in our{" "}
             <a
               href="/refund-policy"
-              className="font-semibold text-[#003C79] underline underline-offset-4"
+              className="font-semibold text-[color:var(--color-primary)] underline underline-offset-4"
             >
               Refund Policy
             </a>
             .
           </p>
 
-          <h2 className="text-lg font-semibold text-[#0B1220]">Changes</h2>
+          <h2 id="changes" className="text-lg font-semibold text-[color:var(--text-primary)]">
+            Changes
+          </h2>
           <p>
             We may update these terms from time to time. If we make material
             changes, we will update the “Last updated” date above.
           </p>
 
-          <h2 className="text-lg font-semibold text-[#0B1220]">Contact</h2>
+          <h2 id="contact" className="text-lg font-semibold text-[color:var(--text-primary)]">
+            Contact
+          </h2>
           <p>
             Questions? Email{" "}
             <a
               href="mailto:support@quackninja.com"
-              className="font-semibold text-[#003C79] underline underline-offset-4"
+              className="font-semibold text-[color:var(--color-primary)] underline underline-offset-4"
             >
               support@quackninja.com
             </a>
             .
           </p>
         </section>
-      </div>
-      <MarketingFooter />
-    </main>
+      </LegalCard>
+    </LegalShell>
   );
 }

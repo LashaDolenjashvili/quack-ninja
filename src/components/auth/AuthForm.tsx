@@ -100,30 +100,30 @@ export function AuthForm({ mode }: AuthFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <label className="text-sm font-semibold text-[#0B1220]">
+      <label className="text-sm font-semibold text-[color:var(--text-primary)]">
         Email
         <input
           type="email"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          className="mt-2 w-full rounded-lg border border-[#E6EEF7] bg-white px-3 py-2 text-sm text-[#0B1220] shadow-sm focus:outline-none focus:ring-2 focus:ring-[#09CEA4]"
+          className="mt-2 w-full rounded-xl border border-[color:var(--border)] bg-white/90 px-4 py-3 text-sm text-[color:var(--text-primary)] shadow-[0_10px_24px_rgba(2,6,23,0.08)] focus:outline-none focus:ring-2 focus:ring-[#09CEA4]/70"
           required
         />
       </label>
-      <label className="text-sm font-semibold text-[#0B1220]">
+      <label className="text-sm font-semibold text-[color:var(--text-primary)]">
         Password
         <div className="relative mt-2">
           <input
             type={showPassword ? "text" : "password"}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            className="w-full rounded-lg border border-[#E6EEF7] bg-white px-3 py-2 pr-16 text-sm text-[#0B1220] shadow-sm focus:outline-none focus:ring-2 focus:ring-[#09CEA4]"
+            className="w-full rounded-xl border border-[color:var(--border)] bg-white/90 px-4 py-3 pr-16 text-sm text-[color:var(--text-primary)] shadow-[0_10px_24px_rgba(2,6,23,0.08)] focus:outline-none focus:ring-2 focus:ring-[#09CEA4]/70"
             required
           />
           <button
             type="button"
             onClick={() => setShowPassword((value) => !value)}
-            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md px-2 py-1 text-xs font-semibold text-[#003C79] hover:text-[#002f60]"
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md px-2 py-1 text-xs font-semibold text-[color:var(--color-primary)] hover:text-[#002f60]"
             aria-label={showPassword ? "Hide password" : "Show password"}
           >
             {showPassword ? "Hide" : "Show"}
@@ -132,13 +132,16 @@ export function AuthForm({ mode }: AuthFormProps) {
       </label>
       {mode === "sign-in" ? (
         <div className="flex justify-end">
-          <Link href="/auth/forgot-password" className="text-xs font-semibold text-[#003C79] hover:text-[#002f60]">
+          <Link
+            href="/auth/forgot-password"
+            className="text-xs font-semibold text-[color:var(--color-primary)] hover:text-[#002f60]"
+          >
             Forgot password?
           </Link>
         </div>
       ) : null}
       {mode === "sign-up" && TRIAL_ENABLED_CLIENT ? (
-        <div className="rounded-lg border border-[#E6EEF7] bg-[#F7FAFC] px-3 py-2 text-xs text-[#5B6B82]">
+        <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-muted)] px-3 py-2 text-xs text-[color:var(--text-secondary)]">
           Creating an account starts your 7-day Pro trial.
         </div>
       ) : null}

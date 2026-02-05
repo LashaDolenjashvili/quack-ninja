@@ -40,13 +40,13 @@ export function PasswordResetForm() {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <label className="text-sm font-semibold text-[#0B1220]">
+      <label className="text-sm font-semibold text-[color:var(--text-primary)]">
         Email
         <input
           type="email"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          className="mt-2 w-full rounded-lg border border-[#E6EEF7] bg-white px-3 py-2 text-sm text-[#0B1220] shadow-sm focus:outline-none focus:ring-2 focus:ring-[#09CEA4]"
+          className="mt-2 w-full rounded-xl border border-[color:var(--border)] bg-white/90 px-4 py-3 text-sm text-[color:var(--text-primary)] shadow-[0_10px_24px_rgba(2,6,23,0.08)] focus:outline-none focus:ring-2 focus:ring-[#09CEA4]/70"
           required
         />
       </label>

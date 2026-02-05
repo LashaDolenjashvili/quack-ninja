@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { AppHeader } from "@/src/components/layout/AppHeader";
 import { PricingSection } from "@/src/components/Marketing/PricingSection";
-import { MarketingFooter } from "@/src/components/layout/MarketingFooter";
+import { Footer } from "@/src/components/layout/Footer";
 
 export const metadata: Metadata = {
   title: "Pricing • QuackNinja",
@@ -11,12 +11,12 @@ export const metadata: Metadata = {
 
 export default function PricingPage() {
   return (
-    <main className="flex min-h-screen flex-col bg-white">
+    <div className="flex min-h-screen flex-col bg-[color:var(--color-bg)]">
       <AppHeader variant="docs" />
-      <div className="flex-1 pt-24">
+      <main className="flex-1">
         <PricingSection />
-      </div>
-      <MarketingFooter />
-    </main>
+      </main>
+      <Footer />
+    </div>
   );
 }

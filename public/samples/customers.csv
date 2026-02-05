@@ -1,0 +1,7 @@
+customer_id,name,email,country
+C001,Ana Stone,ana@example.com,US
+C002,Mark Chen,mark@example.com,UK
+C003,Lina Park,lina@example.com,DE
+C003,Lina Park Duplicate,lina+dup@example.com,DE
+C004,Omar Ali,omar@example.com,AE
+C005,Sara Novak,sara@example.com,PL

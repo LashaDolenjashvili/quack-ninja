@@ -47,15 +47,15 @@ export function AppHeader({ variant = "landing" }: AppHeaderProps) {
       : "sticky top-0 z-50 bg-gradient-to-br from-[#003C79] via-[#00356b] to-[#001f40]";
 
   const navLinkClass =
-    "rounded-md px-2 py-1 text-white/80 transition hover:bg-white/10 hover:text-white";
+    "rounded-md px-2 py-1 text-white/80 transition hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white";
   const outlineButtonClass =
-    "rounded-lg border border-white/30 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/50 hover:bg-white/10";
+    "rounded-lg border border-white/30 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/50 hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white";
 
   return (
     <div className={headerClass}>
-      <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-6 px-6 py-4">
+      <div className="qn-container flex h-16 items-center justify-between gap-6">
         <Link href="/" className="flex items-center">
-          <Logo />
+          <Logo showMark={false} />
         </Link>
 
         <nav className="flex items-center gap-4 text-sm font-semibold text-white">

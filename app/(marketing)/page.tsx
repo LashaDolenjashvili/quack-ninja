@@ -1,428 +1,236 @@
 import { PricingSection } from "@/src/components/Marketing/PricingSection";
 import { HeroCta } from "@/src/components/Marketing/HeroCta";
-import { marketingStyles } from "@/src/components/Marketing/marketingStyles";
-import { LandingSection } from "@/src/components/Marketing/LandingSection";
-import { AuthAwareCta } from "@/src/components/Marketing/AuthAwareCta";
-import { Logo } from "@/src/components/Logo";
-import { MarketingFooter } from "@/src/components/layout/MarketingFooter";
+import Image from "next/image";
 import { AppHeader } from "@/src/components/layout/AppHeader";
-import { FeatureFlags } from "@/src/config/flags";
-import { getPlanDisplay } from "@/src/lib/planDisplay";
-
-const supportsExcel = FeatureFlags.ENABLE_XLSX;
-const supportsParquet = FeatureFlags.ENABLE_PARQUET;
-const freePlan = getPlanDisplay("free");
-const proPlan = getPlanDisplay("pro");
+import { HowItWorks } from "@/src/components/landing/HowItWorks";
+import { QuickWins } from "@/src/components/landing/QuickWins";
+import { PrivacyTrust } from "@/src/components/landing/PrivacyTrust";
+import { ExampleQueriesSection } from "@/src/components/landing/ExampleQueriesSection";
+import { FeatureList } from "@/src/components/ui/FeatureList";
+import { Section } from "@/src/components/ui/Section";
+import { Container } from "@/src/components/ui/Container";
+import { Card } from "@/src/components/ui/Card";
+import { SectionHeader } from "@/src/components/Marketing/SectionHeader";
+import { Footer } from "@/src/components/layout/Footer";
+import { SQL_DIALECT_DESCRIPTION, SQL_DIALECT_LABEL } from "@/src/lib/sqlDialect";
 const trialEnabled = process.env.NEXT_PUBLIC_TRIAL_ENABLED === "true";
-
-const formatList = ["CSV"]
-  .concat(supportsParquet ? ["Parquet"] : [])
-  .concat(supportsExcel ? ["Excel (.xlsx)"] : []);
-
-
-function joinList(items: string[]) {
-  if (items.length === 0) {
-    return "";
-  }
-  if (items.length === 1) {
-    return items[0];
-  }
-  if (items.length === 2) {
-    return `${items[0]} and ${items[1]}`;
-  }
-  return `${items.slice(0, -1).join(", ")}, and ${items.at(-1)}`;
-}
 
 const faqs = [
   {
-    question: "Do my files leave my computer?",
+    question: "Do my files ever leave my computer?",
     answer:
-      "No. QuackNinja runs locally in your browser. Files stay on your computer by default.",
+      "No. QuackNinja runs locally in your browser. Your data stays on your machine unless you choose to export results.",
   },
   {
-    question: "What formats are supported?",
-    answer: joinList(formatList),
+    question: "What SQL dialect does QuackNinja use?",
+    answer: `QuackNinja uses ${SQL_DIALECT_DESCRIPTION}`,
+    href: "/docs#sql-snippets",
+    linkLabel: "Learn more in Docs",
+    badge: SQL_DIALECT_LABEL,
   },
   {
-    question: "How large can my files be?",
-    answer: `Free: ${freePlan.display.fileSize} per file and ${freePlan.display.sessionBudget} per session. Pro: ${proPlan.display.fileSize} per file and ${proPlan.display.sessionBudget} per session.`,
+    question: "What file types are supported?",
+    answer: `CSV, Excel (.xlsx), and Parquet. You can attach one or multiple files per session and query them like tables.`,
   },
   {
-    question: "Why are there limits?",
+    question: "How do I reference my files in SQL?",
     answer:
-      "Limits keep everything fast in your browser. Pro raises the caps for bigger files and exports.",
+      "Each attached file becomes a table name you can query directly (for example: customers, transactions). We also show the table names in the sidebar.",
   },
   {
-    question: "What kind of SQL can I use?",
-    answer: "Standard SQL for filters, joins, and totals.",
+    question: "Can I join multiple files?",
+    answer:
+      "Yes — join exports in seconds (customers ↔ transactions ↔ payments). DuckDB handles joins, group-bys, and filters locally.",
+  },
+  {
+    question: "Does QuackNinja support window functions and CTEs?",
+    answer:
+      "Yes. DuckDB SQL supports CTEs (WITH …), window functions (OVER/PARTITION BY), and common analytics patterns.",
+  },
+  {
+    question: "Why are there limits on file size / rows?",
+    answer:
+      "Because everything runs in your browser. Limits keep performance fast and stable. Pro raises the caps for bigger exports.",
+  },
+  {
+    question: "Can I export results?",
+    answer:
+      "Yes. Export any query output to a clean CSV that’s ready to share with teammates or stakeholders.",
+  },
+  {
+    question: "What about Excel sheets — which sheet is used?",
+    answer:
+      "You can choose a sheet on import. If you don’t select one, we default to the first sheet.",
+    href: "/docs/import/excel",
+    linkLabel: "Docs: Importing Excel",
   },
   {
     question: "Is there a desktop app?",
-    answer: "Not yet—QuackNinja is browser-first.",
+    answer:
+      "Not yet. QuackNinja is browser-first to stay lightweight and fast. A desktop app may come later.",
   },
 ];
 
+
 export default function MarketingPage() {
   return (
-    <main className="min-h-screen bg-[color:var(--color-surface)] text-[#0B1220]">
+    <div className="flex min-h-screen flex-col bg-[color:var(--color-surface)] text-[#0B1220]">
+      <main className="flex-1">
       <div className="relative overflow-hidden bg-gradient-to-br from-[#003C79] via-[#00356b] to-[#001f40] text-white">
         <div className="absolute left-[-120px] top-[-80px] h-72 w-72 rounded-full bg-[#09CEA4]/30 blur-3xl" />
         <div className="absolute bottom-[-140px] right-[-120px] h-96 w-96 rounded-full bg-white/10 blur-3xl" />
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-20 px-6 pb-20 pt-24">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-20 px-6 pb-20 pt-24">
           <AppHeader variant="landing" />
 
-          <section className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+          <section className="grid gap-10 lg:grid-cols-2 lg:items-center">
+            <div className="flex justify-center lg:justify-start">
+              <div className="relative isolate">
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute -inset-16 z-0 rounded-full opacity-70 blur-2xl md:-inset-24"
+                  style={{
+                    background:
+                      "radial-gradient(closest-side at 50% 55%, rgba(0, 210, 255, 0.55), rgba(0, 160, 255, 0.22) 45%, rgba(0, 60, 120, 0.08) 70%, rgba(0, 0, 0, 0) 100%)",
+                  }}
+                />
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute -inset-10 z-0 rounded-full opacity-50 blur-xl"
+                  style={{
+                    background:
+                      "radial-gradient(closest-side at 50% 60%, rgba(0, 210, 255, 0.45), rgba(0, 120, 255, 0.18) 55%, rgba(0, 0, 0, 0) 100%)",
+                  }}
+                />
+                <div className="relative z-10">
+                  <Image
+                    src="/brand/quack-ninja.svg"
+                    alt="QuackNinja logo"
+                    width={520}
+                    height={520}
+                    className="h-auto w-[320px] md:w-[420px] lg:w-[520px]"
+                    style={{
+                      imageRendering: "auto",
+                      filter: "drop-shadow(0 22px 38px rgba(0,0,0,0.35))",
+                    }}
+                    priority
+                  />
+                </div>
+              </div>
+            </div>
+
             <div className="flex flex-col gap-6">
-              <span className="inline-flex w-fit items-center gap-2 rounded-full border border-white/30 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-white/80">
-                Made for quick checks on real exports
-              </span>
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="inline-flex w-fit items-center gap-2 rounded-full border border-white/30 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-white/80">
+                  Made for quick checks on real exports
+                </span>
+                <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#09A483]">
+                  Powered by DuckDB
+                </span>
+              </div>
               <h1 className="text-4xl font-semibold leading-tight text-white sm:text-5xl">
-                Get answers from CSV &amp; Excel exports — fast
+                Turn messy exports into answers in minutes.
               </h1>
               <p className="text-lg text-white/90">
-                Drop in one or more exports, run familiar SQL, and share a clean
-                result in minutes.
+                Run SQL on CSV, Excel, and Parquet — without setting up a
+                database. Join files, spot issues, and export a clean result
+                your team can use.
               </p>
               <p className="text-sm text-white/80">
-                Works locally in your browser. Files stay on your computer.
+                Runs locally in your browser. Your files stay on your computer.
               </p>
               <div className="flex flex-wrap items-center gap-4">
                 <HeroCta />
-                <div className="flex flex-wrap items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/70">
-                  <span className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#09CEA4]" />
-                    Works locally in your browser
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#09CEA4]" />
-                    Files stay on your computer
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#09CEA4]" />
-                    Export results as CSV
-                  </span>
-                </div>
               </div>
               {trialEnabled ? (
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/70">
                   Includes a 7-day Pro trial. No card.
                 </p>
               ) : null}
-            </div>
 
-            <div className="rounded-3xl border border-white/20 bg-white/15 p-9 shadow-[0_18px_48px_rgba(0,0,0,0.25)] lg:max-w-[560px]">
-              <p className="text-base font-semibold text-white/90">
-                Outcomes
-              </p>
-              <ul className="mt-4 max-w-full space-y-3 text-[17px] leading-7 text-white/95">
-                {[
-                  "Runs on your computer (files stay local)",
-                  "Join exports in seconds (customers + transactions)",
-                  "Spot duplicates, missing values, weird rows",
-                  "Export a clean CSV for stakeholders",
-                  "Works even when exports are messy",
-                ].map((item) => (
-                  <li key={item} className="flex items-start gap-3">
-                    <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-[#09CEA4]" />
-                    <span className="whitespace-normal break-words leading-relaxed">
-                      {item}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+              <Card variant="glass" className="rounded-3xl p-8">
+                <p className="text-base font-semibold text-white/90">
+                  Outcomes
+                </p>
+                <FeatureList
+                  tone="dark"
+                  className="mt-4 text-[17px] leading-7"
+                  items={[
+                    "Runs on your computer (files stay local)",
+                    "Join exports in seconds (customers ↔ transactions)",
+                    "Find duplicates, missing values, and odd rows",
+                    "Export a clean CSV for stakeholders",
+                    "Works even when exports are messy",
+                  ]}
+                />
+              </Card>
             </div>
           </section>
         </div>
       </div>
 
-      <LandingSection id="how" variant="surface" innerClassName="flex w-full flex-col gap-10">
-          <div className="flex flex-col gap-3">
-            <p className={marketingStyles.eyebrow}>How it works</p>
-              <h2 className={marketingStyles.heading}>
-              SQL in your browser, without the setup
-            </h2>
-            <p className={marketingStyles.subheading}>
-              Attach files, run SQL, export results — all on your machine.
-            </p>
-          </div>
-          <div className="grid gap-6 md:grid-cols-3">
-            {[
-              {
-                title: "Attach files",
-                body: `${joinList(formatList)}. Add multiple files per session.`,
-              },
-              {
-                title: "Ask questions with SQL",
-                body: "Filter, join, and summarize your exports in seconds.",
-              },
-              {
-                title: "Export results",
-                body: "Download the output you need as a clean CSV — ready to share.",
-              },
-            ].map((item) => (
-              <div
-                key={item.title}
-                className={marketingStyles.card}
-              >
-                <h3 className={marketingStyles.cardTitle}>{item.title}</h3>
-                <p className={marketingStyles.cardBody}>{item.body}</p>
-              </div>
-            ))}
-          </div>
-          <div className="flex flex-wrap items-center gap-6 text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--text-secondary)]">
-            <span className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#09CEA4]" />
-              Works locally in your browser
-            </span>
-            <span className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#09CEA4]" />
-              Files stay on your computer
-            </span>
-            <span className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#09CEA4]" />
-              Export results as CSV
-            </span>
-          </div>
-      </LandingSection>
+      <HowItWorks />
+      <QuickWins />
+      <PrivacyTrust />
 
-      <LandingSection
-        id="use-cases"
-        variant="alt"
-        innerClassName="flex w-full flex-col gap-10"
-      >
-          <div className="flex flex-col gap-3">
-            <p className={marketingStyles.eyebrow}>Use cases</p>
-            <h2 className={marketingStyles.heading}>When to use QuackNinja</h2>
-            <p className={marketingStyles.subheading}>
-              Open it when you have an export and need an answer fast — without
-              sending data anywhere.
-            </p>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--text-secondary)]">
-              Runs locally in your browser. Your files stay on your computer.
-            </p>
-          </div>
-          <div className="grid gap-6 md:grid-cols-2">
-            {[
-              {
-                title: "Before you share an export",
-                outcome:
-                  "Catch issues in minutes, not after someone replies “this looks wrong.”",
-                bullets: [
-                  "Find missing values and blanks",
-                  "Spot duplicates (IDs, emails, invoice numbers)",
-                  "Check odd rows (negative amounts, impossible dates)",
-                ],
-                examples: [
-                  {
-                    label: "Missing values by column",
-                    code:
-                      "SELECT\n  COUNT(*) AS rows,\n  SUM(CASE WHEN email IS NULL THEN 1 ELSE 0 END) AS missing_email\nFROM customers;",
-                  },
-                  {
-                    label: "Duplicates by customer_id",
-                    code:
-                      "SELECT customer_id, COUNT(*) AS dupes\nFROM customers\nGROUP BY customer_id\nHAVING COUNT(*) > 1\nORDER BY dupes DESC;",
-                  },
-                ],
-                icon: (
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="h-5 w-5 text-[#003C79]"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden
-                  >
-                    <path d="M9 11l3 3L22 4" />
-                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-                  </svg>
-                ),
-              },
-              {
-                title: "When two files need to match",
-                outcome:
-                  "Combine exports without spreadsheets or manual copy/paste.",
-                bullets: [
-                  "Join customers + transactions",
-                  "Merge product list + sales export",
-                  "Compare two exports to see what changed",
-                ],
-                examples: [
-                  {
-                    label: "Join and summarize totals",
-                    code:
-                      "SELECT c.segment, SUM(o.amount) AS total\nFROM orders o\nJOIN customers c ON c.id = o.customer_id\nGROUP BY c.segment\nORDER BY total DESC;",
-                  },
-                ],
-                icon: (
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="h-5 w-5 text-[#003C79]"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden
-                  >
-                    <path d="M10 13a5 5 0 0 1 0-7l1.5-1.5a5 5 0 0 1 7 7L17 13" />
-                    <path d="M14 11a5 5 0 0 1 0 7L12.5 19.5a5 5 0 1 1-7-7L7 11" />
-                  </svg>
-                ),
-              },
-              {
-                title: "When you need one number you can trust",
-                outcome:
-                  "Confirm totals before a report, invoice, or meeting.",
-                bullets: [
-                  "Recalculate totals by date / region / owner",
-                  "Validate a dashboard number from an export",
-                  "Quick “does this reconcile?” checks",
-                ],
-                examples: [
-                  {
-                    label: "Group by month and sum",
-                    code:
-                      "SELECT DATE_TRUNC('month', order_date) AS month,\n  SUM(amount) AS total\nFROM orders\nGROUP BY month\nORDER BY month;",
-                  },
-                ],
-                icon: (
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="h-5 w-5 text-[#003C79]"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden
-                  >
-                    <path d="M5 3h14a2 2 0 0 1 2 2v4H3V5a2 2 0 0 1 2-2Z" />
-                    <path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
-                    <path d="M7 13h2" />
-                    <path d="M11 13h2" />
-                    <path d="M7 17h2" />
-                    <path d="M11 17h2" />
-                  </svg>
-                ),
-              },
-              {
-                title: "When you need a clean subset to send",
-                outcome:
-                  "Export a share-ready CSV with only what matters.",
-                bullets: [
-                  "Filter to last 30 days / one region / one customer",
-                  "Keep only columns stakeholders need",
-                  "Export results as a new CSV (query output)",
-                ],
-                examples: [
-                  {
-                    label: "Filter + select columns",
-                    code:
-                      "SELECT order_id, customer_id, amount\nFROM orders\nWHERE order_date >= CURRENT_DATE - INTERVAL '30 days';",
-                  },
-                ],
-                icon: (
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="h-5 w-5 text-[#003C79]"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden
-                  >
-                    <path d="M3 5h18l-7 8v5l-4 2v-7Z" />
-                  </svg>
-                ),
-              },
-            ].map((card) => (
-              <div
-                key={card.title}
-                className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--bg-surface)] p-6 shadow-[0_12px_32px_rgba(11,18,32,0.08)] transition hover:-translate-y-0.5 hover:border-[#B9C9DD] hover:shadow-[0_18px_48px_rgba(11,18,32,0.12)]"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EEF4FB]">
-                    {card.icon}
-                  </div>
-                  <h3 className="text-base font-semibold text-[color:var(--text-primary)]">
-                    {card.title}
-                  </h3>
-                </div>
-                <p className="mt-3 text-sm font-semibold text-[#003C79]">
-                  {card.outcome}
-                </p>
-                <ul className="mt-3 space-y-2 text-sm text-[color:var(--text-secondary)]">
-                  {card.bullets.map((item) => (
-                    <li key={item} className="flex items-start gap-2">
-                      <span className="mt-2 h-1.5 w-1.5 rounded-full bg-[#09CEA4]" />
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-                <details className="mt-4 rounded-xl border border-[color:var(--border)] bg-[#F7FAFC] px-4 py-3 text-sm text-[color:var(--text-secondary)]">
-                  <summary className="cursor-pointer font-semibold text-[color:var(--text-primary)]">
-                    Example query
-                  </summary>
-                  <div className="mt-3 space-y-3">
-                    {card.examples.map((example) => (
-                      <div key={example.label}>
-                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--text-secondary)]">
-                          {example.label}
-                        </p>
-                        <pre className="mt-2 overflow-auto rounded-lg border border-[color:var(--border)] bg-white px-3 py-2 text-xs text-[#0B1220]">
-                          <code>{example.code}</code>
-                        </pre>
-                      </div>
-                    ))}
-                  </div>
-                </details>
-              </div>
-            ))}
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[color:var(--border)] bg-white px-6 py-4">
-            <p className="text-sm font-semibold text-[color:var(--text-secondary)]">
-              Tip: If your export is too big to preview or export, that’s what
-              Pro is for.
-            </p>
-            <div className="flex items-center gap-3">
-              <AuthAwareCta showSecondary />
-              <a
-                href="#pricing"
-                className="rounded-lg border border-[color:var(--border)] bg-white px-4 py-2 text-sm font-semibold text-[#003C79]"
-              >
-                See pricing
-              </a>
-            </div>
-          </div>
-      </LandingSection>
+      <ExampleQueriesSection />
 
       <PricingSection />
 
-      <LandingSection id="faq" variant="alt" innerClassName="flex w-full flex-col gap-10">
-          <div className="flex flex-col gap-3">
-            <p className={marketingStyles.eyebrow}>FAQ</p>
-            <h2 className={marketingStyles.heading}>Common questions</h2>
-          </div>
+      <Section variant="light" id="faq">
+        <Container className="flex flex-col gap-12">
+          <SectionHeader
+            kicker="FAQ"
+            title="Common questions"
+            subtitle="Quick answers to the most common questions."
+          />
           <div className="grid gap-6 md:grid-cols-2">
             {faqs.map((item) => (
-              <div
-                key={item.question}
-                className={marketingStyles.card}
-              >
-                <h3 className="text-base font-semibold text-[#0B1220]">
-                  {item.question}
-                </h3>
-                <p className={marketingStyles.cardBody}>{item.answer}</p>
-              </div>
+              <Card key={item.question} variant="elevated" className="p-0">
+                <details className="group rounded-2xl p-6">
+                  <summary className="flex cursor-pointer list-none items-start justify-between gap-4 text-base font-semibold text-[color:var(--text-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[color:var(--color-primary)]">
+                    <span className="text-lg font-semibold leading-snug">
+                      {item.question}
+                    </span>
+                    <span className="flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--border)] text-[color:var(--text-secondary)] transition group-open:rotate-180 group-open:border-[color:var(--color-primary)]">
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="h-4 w-4"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden
+                      >
+                        <path d="M6 9l6 6 6-6" />
+                      </svg>
+                    </span>
+                  </summary>
+                  <div className="mt-4 border-t border-[color:var(--border)] pt-4 text-sm leading-relaxed text-[color:var(--text-secondary)]">
+                    {item.badge ? (
+                      <span className="mb-3 inline-flex w-fit items-center rounded-full border border-emerald-200/70 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
+                        {item.badge}
+                      </span>
+                    ) : null}
+                    <p className="text-[15px] leading-7">{item.answer}</p>
+                    {item.href ? (
+                      <a
+                        href={item.href}
+                        className="mt-3 inline-flex text-xs font-semibold uppercase tracking-[0.2em] text-[color:var(--color-primary)] underline decoration-transparent underline-offset-4 transition hover:decoration-current"
+                      >
+                        {item.linkLabel ?? "Learn more"}
+                      </a>
+                    ) : null}
+                  </div>
+                </details>
+              </Card>
             ))}
           </div>
-      </LandingSection>
+        </Container>
+      </Section>
 
-      <MarketingFooter />
-    </main>
+      </main>
+      <Footer />
+    </div>
   );
 }

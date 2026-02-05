@@ -24,16 +24,11 @@ export function SettingsView() {
   const planLabel = loading
     ? "Loading..."
     : trial.active
-      ? "Pro (Trial)"
+      ? "Pro Trial"
       : plan === "pro"
         ? "Pro"
         : "Free";
   const isPaidPro = plan === "pro" && !trial.active;
-  const upgradeLabel = loading
-    ? "Loading..."
-    : isPaidPro
-      ? "Billing coming soon"
-      : "Upgrade to Pro";
   const upgradeHref = getUpgradeHref(Boolean(profile));
   const freePlan = getPlanDisplay("free");
   const proPlan = getPlanDisplay("pro");
@@ -92,151 +87,193 @@ export function SettingsView() {
   };
 
   return (
-    <div className="p-10">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#5B6B82]">
-            Settings
-          </p>
-          <h1 className="mt-2 text-2xl font-semibold text-[#0B1220]">
-            Plan &amp; Usage
-          </h1>
+    <div className="relative overflow-hidden py-10">
+      <div className="pointer-events-none absolute -left-24 top-10 h-64 w-64 rounded-full bg-[#09CEA4]/10 blur-3xl" />
+      <div className="pointer-events-none absolute right-0 top-32 h-72 w-72 rounded-full bg-[#5BA9FF]/10 blur-3xl" />
+
+      <div className="qn-container relative">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#09A483]">
+              Settings
+            </p>
+            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#0B1220] md:text-4xl">
+              Plan &amp; Usage
+            </h1>
+            <p className="mt-2 text-sm text-[#5B6B82]">
+              Manage your plan, limits, and saved queries.
+            </p>
+          </div>
+          {!isPaidPro && !loading ? (
+            <Link
+              href={upgradeHref}
+              className={buttonClassName({ variant: "primary", size: "md" })}
+            >
+              Upgrade to Pro
+            </Link>
+          ) : null}
         </div>
-        {isPaidPro || loading ? (
-          <button
-            className={buttonClassName({
-              variant: "secondary",
-              size: "md",
-              className: "cursor-not-allowed",
-            })}
-            type="button"
-            disabled
-          >
-            {upgradeLabel}
-          </button>
-        ) : (
-          <Link
-            href={upgradeHref}
-            className={buttonClassName({ variant: "primary", size: "md" })}
-          >
-            Upgrade to Pro
-          </Link>
-        )}
-      </div>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
-        <section className="rounded-2xl border border-[#E6EEF7] bg-white p-6 shadow-[0_18px_48px_rgba(11,18,32,0.08)]">
-          <h2 className="text-lg font-semibold text-[#0B1220]">Plan</h2>
-          <div className="mt-4 grid gap-4 text-sm text-[#5B6B82]">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#5B6B82]">
-                Email
-              </p>
-              <p className="mt-1 text-sm text-[#0B1220]">
-                {profile?.email ?? "Not signed in"}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#5B6B82]">
-                Plan
-              </p>
-              <p className="mt-1 text-sm text-[#0B1220]">
-                {planLabel}
-              </p>
-              {trial.active ? (
-                <p className="mt-1 text-xs text-[#5B6B82]">
-                  Trial ends in {trialCountdown ?? "..."}{" "}
-                  {trialEndsAtLabel ? `(${trialEndsAtLabel})` : ""}
+        <div className="mt-8 grid gap-6 lg:grid-cols-[1.4fr_0.9fr]">
+          <section className="rounded-2xl border border-slate-200/60 bg-white/90 p-6 shadow-[0_20px_60px_rgba(2,6,23,0.08)] md:p-8">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-[#0B1220]">
+                  Current plan
                 </p>
-              ) : trial.hasEnded ? (
-                <p className="mt-1 text-xs text-[#5B6B82]">
-                  Trial ended. You’re on the Free plan.
-                </p>
-              ) : null}
-            </div>
-          </div>
-          {trial.enabled ? (
-            <div className="mt-4 rounded-xl border border-[#E6EEF7] bg-[#F7FAFC] px-4 py-3 text-xs text-[#5B6B82]">
-              <p className="font-semibold text-[#0B1220]">Trial timeline</p>
-              <p className="mt-1">
-                Started: {trial.startedAt ? formatTrialEndDate(trial.startedAt) : "—"}
-              </p>
-              <p>
-                Ends: {trial.endsAt ? formatTrialEndDate(trial.endsAt) : "—"}
-              </p>
-              <p>Status: {trial.active ? "Active" : trial.hasEnded ? "Expired" : "—"}</p>
-              <p className="mt-1">
-                After trial, you’ll be on Free automatically.
-              </p>
-            </div>
-          ) : null}
-          {showTrialDebug ? (
-            <details className="mt-4 rounded-xl border border-[#E6EEF7] bg-[#F7FAFC] px-4 py-3 text-xs text-[#5B6B82]">
-              <summary className="cursor-pointer font-semibold text-[#0B1220]">
-                Trial debug
-              </summary>
-              <pre className="mt-2 whitespace-pre-wrap text-[11px] text-[#0B1220]">
-{JSON.stringify(trial, null, 2)}
-              </pre>
-            </details>
-          ) : null}
-        </section>
-
-        <section className="rounded-2xl border border-[#E6EEF7] bg-white p-6 shadow-[0_18px_48px_rgba(11,18,32,0.08)]">
-          <h2 className="text-lg font-semibold text-[#0B1220]">Usage</h2>
-          <div className="mt-4 space-y-3 text-sm text-[#5B6B82]">
-            <div className="flex items-center justify-between">
-              <span>Saved queries</span>
-              <span>
-                {savedCount} / {activePlan.display.savedQueries}
-              </span>
-            </div>
-          </div>
-          <div className="mt-5 grid gap-4 text-sm text-[#5B6B82] sm:grid-cols-2">
-            {[freePlan, proPlan].map((planInfo) => (
-              <div
-                key={planInfo.tier}
-                className={`rounded-xl border px-4 py-3 ${
-                  planInfo.tier === plan
-                    ? "border-[#003C79]/40 bg-[#EEF4FB]"
-                    : "border-[#E6EEF7] bg-[#F7FAFC]"
-                }`}
-              >
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#5B6B82]">
-                  {planInfo.label} limits
-                </p>
-                <div className="mt-3 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span>Max single file size</span>
-                    <span>{planInfo.display.fileSize}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Total session size</span>
-                    <span>{planInfo.display.sessionBudget}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Preview rows</span>
-                    <span>{planInfo.display.previewRows}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Export rows</span>
-                    <span>{planInfo.display.exportRows}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Saved queries</span>
-                    <span>{planInfo.display.savedQueries}</span>
-                  </div>
+                <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-[#5B6B82]">
+                  <span className="inline-flex items-center rounded-full border border-[#BFECE1] bg-[#EAFBF6] px-3 py-1 text-xs font-semibold text-[#0B6D58]">
+                    {planLabel}
+                  </span>
+                  <span className="flex items-center gap-2 text-xs text-[#5B6B82]">
+                    <span className="h-2 w-2 rounded-full bg-[#09CEA4]" />
+                    Active
+                  </span>
+                  {trial.active && trialEndsAtLabel ? (
+                    <span className="text-xs text-[#5B6B82]">
+                      Ends {trialEndsAtLabel}
+                    </span>
+                  ) : null}
                 </div>
               </div>
-            ))}
-          </div>
-        </section>
-      </div>
+              <div className="text-sm text-[#5B6B82]">
+                {profile?.email ?? "Not signed in"}
+              </div>
+            </div>
+
+            {trial.active ? (
+              <div className="mt-5 rounded-xl border border-[#E6EEF7] bg-[#F7FAFC] px-4 py-3 text-sm text-[#5B6B82]">
+                After your trial, you’ll switch to Free automatically. No card
+                required.
+              </div>
+            ) : trial.hasEnded ? (
+              <div className="mt-5 rounded-xl border border-[#F3D2D2] bg-[#FEF5F5] px-4 py-3 text-sm text-[#9C2B2B]">
+                Trial ended — you’re on Free now.
+              </div>
+            ) : null}
+
+            {trial.enabled ? (
+              <div className="mt-6 space-y-3">
+                <div className="flex items-center justify-between text-xs text-[#5B6B82]">
+                  <span>
+                    Started:{" "}
+                    {trial.startedAt ? formatTrialEndDate(trial.startedAt) : "—"}
+                  </span>
+                  <span>
+                    Ends: {trial.endsAt ? formatTrialEndDate(trial.endsAt) : "—"}
+                  </span>
+                </div>
+                <div className="h-2 rounded-full bg-[#E6EEF7]">
+                  <div
+                    className="h-2 rounded-full bg-[#09CEA4]"
+                    style={{
+                      width: trial.active
+                        ? "70%"
+                        : trial.hasEnded
+                          ? "100%"
+                          : "0%",
+                    }}
+                  />
+                </div>
+                {trial.active ? (
+                  <div className="text-xs text-[#5B6B82]">
+                    {trialCountdown ? `${trialCountdown} left` : "—"}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            {trial.active && trialCountdown ? (
+              Number(trialCountdown.replace(/\D/g, "")) <= 2 ? (
+                <div className="mt-4 rounded-xl border border-[#F3D2D2] bg-[#FEF5F5] px-4 py-3 text-sm text-[#9C2B2B]">
+                  Trial ends soon — upgrade to keep Pro limits.
+                </div>
+              ) : null
+            ) : null}
+
+            {showTrialDebug ? (
+              <details className="mt-4 rounded-xl border border-[#E6EEF7] bg-[#F7FAFC] px-4 py-3 text-xs text-[#5B6B82]">
+                <summary className="cursor-pointer font-semibold text-[#0B1220]">
+                  Trial debug
+                </summary>
+                <pre className="mt-2 whitespace-pre-wrap text-[11px] text-[#0B1220]">
+{JSON.stringify(trial, null, 2)}
+                </pre>
+              </details>
+            ) : null}
+          </section>
+
+          <section className="rounded-2xl border border-slate-200/60 bg-white/90 p-6 shadow-[0_20px_60px_rgba(2,6,23,0.08)] md:p-8">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-[#0B1220]">Usage</h2>
+              <span className="text-xs text-[#5B6B82]">
+                Saved queries: {savedCount} / {activePlan.display.savedQueries}
+              </span>
+            </div>
+
+            <div className="mt-5 overflow-hidden rounded-xl border border-[#E6EEF7]">
+              <div className="grid grid-cols-3 bg-[#F7FAFC] text-xs font-semibold uppercase tracking-[0.2em] text-[#7A8AA1]">
+                <div className="px-4 py-2">Limit</div>
+                <div className="px-4 py-2 text-right">Your plan</div>
+                {!isPaidPro ? (
+                  <div className="px-4 py-2 text-right">Pro</div>
+                ) : null}
+              </div>
+              {[
+                ["Max file size", activePlan.display.fileSize, proPlan.display.fileSize],
+                ["Total session size", activePlan.display.sessionBudget, proPlan.display.sessionBudget],
+                ["Preview rows", activePlan.display.previewRows, proPlan.display.previewRows],
+                ["Export rows", activePlan.display.exportRows, proPlan.display.exportRows],
+                ["Saved queries", activePlan.display.savedQueries, proPlan.display.savedQueries],
+              ].map(([label, mine, pro]) => (
+                <div
+                  key={label}
+                  className="grid grid-cols-3 border-t border-[#E6EEF7] text-sm text-[#5B6B82]"
+                >
+                  <div className="px-4 py-2">{label}</div>
+                  <div className="px-4 py-2 text-right text-[#0B1220]">
+                    {mine}
+                  </div>
+                  {!isPaidPro ? (
+                    <div className="px-4 py-2 text-right text-[#0B1220]">
+                      {pro}
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+
+            {!isPaidPro ? (
+              <div className="mt-5 rounded-xl border border-[#E6EEF7] bg-[#F7FAFC] px-4 py-3 text-sm text-[#5B6B82]">
+                <p className="font-semibold text-[#0B1220]">
+                  Need bigger exports?
+                </p>
+                <p className="mt-1">
+                  Upgrade to Pro for larger files, previews, and exports.
+                </p>
+                <Link
+                  href={upgradeHref}
+                  className={buttonClassName({
+                    variant: "primary",
+                    size: "sm",
+                    className: "mt-3 inline-flex",
+                  })}
+                >
+                  Upgrade to Pro
+                </Link>
+              </div>
+            ) : (
+              <div className="mt-5 rounded-xl border border-[#E6EEF7] bg-[#F7FAFC] px-4 py-3 text-sm text-[#5B6B82]">
+                You’re on Pro. Manage billing from your account settings.
+              </div>
+            )}
+          </section>
+        </div>
 
       {isAdmin ? (
         <section
           id="admin"
-          className="mt-6 rounded-2xl border border-[#E6EEF7] bg-white p-6 shadow-[0_18px_48px_rgba(11,18,32,0.08)]"
+          className="mt-8 rounded-2xl border border-[#E6EEF7] bg-white/90 p-6 shadow-[0_18px_48px_rgba(11,18,32,0.08)]"
         >
           <h2 className="text-lg font-semibold text-[#0B1220]">Admin</h2>
           <p className="mt-2 text-sm text-[#5B6B82]">
@@ -276,7 +313,7 @@ export function SettingsView() {
           </div>
         </section>
       ) : null}
-
+      </div>
     </div>
   );
 }

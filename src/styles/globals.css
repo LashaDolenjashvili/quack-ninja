@@ -1,6 +1,18 @@
 @import "./tailwind.css";
 
 :root {
+  --qn-bg: var(--fs-bg);
+  --qn-surface: var(--fs-surface);
+  --qn-surface-alt: var(--fs-surface-alt);
+  --qn-border: var(--fs-border);
+  --qn-text: var(--fs-text);
+  --qn-muted: var(--fs-muted);
+  --qn-accent: var(--fs-accent);
+  --qn-hero-from: #003c79;
+  --qn-hero-to: #001f40;
+  --qn-radius: 20px;
+  --qn-shadow-card: 0 18px 48px rgba(11, 18, 32, 0.08);
+  --qn-shadow-elevated: 0 24px 70px rgba(2, 6, 23, 0.14);
   --fs-primary: #003c79;
   --fs-accent: #09cea4;
   --fs-hero-bg: #003c79;
@@ -51,8 +63,8 @@
 }
 
 body {
-  background: var(--fs-bg);
-  color: var(--fs-text);
+  background: var(--qn-bg);
+  color: var(--qn-text);
   font-family: var(--font-quicksand), system-ui, -apple-system, Segoe UI,
     Roboto, Helvetica, Arial, sans-serif;
 }
@@ -60,4 +72,38 @@ body {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+@layer utilities {
+  .qn-container {
+    @apply mx-auto w-full max-w-6xl px-6;
+  }
+
+  .qn-section {
+    @apply py-20 md:py-28;
+  }
+
+  .qn-heading {
+    @apply text-3xl font-semibold tracking-tight text-[#0B1220] md:text-5xl;
+  }
+
+  .qn-subheading {
+    @apply text-base text-[color:var(--text-secondary)] md:text-lg;
+  }
+
+  .qn-card {
+    @apply rounded-2xl border border-[color:var(--border)] bg-[color:var(--bg-surface)] p-6 shadow-[var(--qn-shadow-card)] transition duration-200;
+  }
+
+  .qn-card-elevated {
+    @apply rounded-2xl border border-slate-200/60 bg-gradient-to-b from-white to-slate-50 p-6 shadow-[var(--qn-shadow-elevated)] transition duration-200;
+  }
+
+  .qn-pill {
+    @apply inline-flex items-center rounded-full border border-white/30 px-3 py-1 text-xs font-semibold uppercase tracking-[0.3em];
+  }
+
+  .qn-divider {
+    @apply h-px w-full bg-slate-200/60;
+  }
 }

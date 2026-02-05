@@ -15,16 +15,15 @@ export default function ForgotPasswordPage() {
       <AuthPageLayout
         title="Reset password"
         subtitle="Get a reset link"
-        helper={
-          <p className="text-sm text-[#5B6B82]">
-            We’ll email you a link to reset your password.
-          </p>
-        }
+        subhead="We’ll email you a link to reset your password."
       >
         <PasswordResetForm />
-        <p className="mt-6 text-sm text-[#5B6B82]">
+        <p className="mt-6 text-sm text-[color:var(--text-secondary)]">
           Remembered your password?{" "}
-          <Link href="/auth/sign-in" className="font-semibold text-[#003C79]">
+          <Link
+            href="/auth/sign-in"
+            className="font-semibold text-[color:var(--color-primary)]"
+          >
             Sign in
           </Link>
         </p>
