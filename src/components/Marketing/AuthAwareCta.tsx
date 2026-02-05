@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { TRIAL_ENABLED_CLIENT, TRIAL_DAYS } from "@/src/lib/trial";
 import { OpenConsoleButton } from "@/src/components/Marketing/OpenConsoleButton";
 import { cx } from "@/src/components/ui/classNames";
 import { useAuth } from "@/src/components/auth/AuthProvider";
@@ -25,10 +24,7 @@ export function AuthAwareCta({
   const { user, loading } = useAuth();
   const status = loading ? "loading" : user ? "in" : "out";
 
-  const signedOutLabel = useMemo(
-    () => (TRIAL_ENABLED_CLIENT ? `Start ${TRIAL_DAYS}-day Pro trial` : "Start free"),
-    []
-  );
+  const signedOutLabel = useMemo(() => "Start free", []);
 
   if (status === "loading") {
     return (

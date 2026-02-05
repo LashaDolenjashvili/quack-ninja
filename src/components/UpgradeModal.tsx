@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { Button } from "@/src/components/ui/button";
 import {
   ModalContent,
@@ -8,7 +7,6 @@ import {
   ModalHeader,
   ModalOverlay,
 } from "@/src/components/ui/modal";
-import { goToUpgrade } from "@/src/lib/upgrade";
 
 type UpgradeModalProps = {
   open: boolean;
@@ -35,7 +33,6 @@ export function UpgradeModal({
   upgradeHref,
   isAuthenticated = true,
 }: UpgradeModalProps) {
-  const router = useRouter();
   if (!open) {
     return null;
   }
@@ -66,22 +63,16 @@ export function UpgradeModal({
           {showUpgrade ? (
             <Button
               type="button"
-              onClick={() => {
-                onClose();
-                if (upgradeHref) {
-                  router.push(upgradeHref);
-                  return;
-                }
-                goToUpgrade(router, Boolean(isAuthenticated));
-              }}
+              disabled
+              className="cursor-not-allowed opacity-80"
             >
-              {upgradeLabel}
+              Pro — coming soon
             </Button>
           ) : null}
         </ModalFooter>
         {showUpgrade ? (
           <p className="mt-3 text-xs text-[#9AA9BE]">
-            Payments are coming soon.
+            Billing is being enabled. You can use QuackNinja free in the meantime.
           </p>
         ) : null}
       </ModalContent>

@@ -5,6 +5,7 @@ import { getEntitlements, type Entitlements, type PlanTier } from "@/src/lib/ent
 import { getActivePlan } from "@/src/billing/plan";
 import { useProfile } from "@/src/billing/useProfile";
 import { useEntitlements } from "@/src/lib/useEntitlements";
+import { BILLING_ENABLED } from "@/src/config/plans";
 
 type Profile = {
   id: string;
@@ -21,7 +22,10 @@ export function usePlan() {
     refresh: refreshEntitlements,
   } = useEntitlements();
   const plan = useMemo(
-    () => entitlementsResponse?.plan ?? getActivePlan(billingProfile),
+    () =>
+      BILLING_ENABLED
+        ? entitlementsResponse?.plan ?? getActivePlan(billingProfile)
+        : "pro",
     [billingProfile, entitlementsResponse]
   );
   const profile = billingProfile
@@ -34,19 +38,35 @@ export function usePlan() {
     : null;
 
   const entitlements: Entitlements = useMemo(() => {
+    if (!BILLING_ENABLED) {
+      return getEntitlements("pro");
+    }
     return entitlementsResponse?.limits ?? getEntitlements(plan);
   }, [entitlementsResponse, plan]);
 
   const trial = useMemo(
-    () => ({
-      active: Boolean(entitlementsResponse?.is_trial_active),
-      endsAt: entitlementsResponse?.trial_ends_at ?? null,
-      startedAt: entitlementsResponse?.trial_started_at ?? null,
-      consumed: Boolean(entitlementsResponse?.trial_consumed),
-      hasEnded: Boolean(entitlementsResponse?.trial_has_ended),
-      enabled: Boolean(entitlementsResponse?.trial_enabled),
-      serverNow: entitlementsResponse?.server_now ?? null,
-    }),
+    () => {
+      if (!BILLING_ENABLED) {
+        return {
+          active: false,
+          endsAt: null,
+          startedAt: null,
+          consumed: false,
+          hasEnded: false,
+          enabled: false,
+          serverNow: entitlementsResponse?.server_now ?? null,
+        };
+      }
+      return {
+        active: Boolean(entitlementsResponse?.is_trial_active),
+        endsAt: entitlementsResponse?.trial_ends_at ?? null,
+        startedAt: entitlementsResponse?.trial_started_at ?? null,
+        consumed: Boolean(entitlementsResponse?.trial_consumed),
+        hasEnded: Boolean(entitlementsResponse?.trial_has_ended),
+        enabled: Boolean(entitlementsResponse?.trial_enabled),
+        serverNow: entitlementsResponse?.server_now ?? null,
+      };
+    },
     [entitlementsResponse]
   );
 
@@ -54,6 +74,7 @@ export function usePlan() {
     plan,
     entitlements,
     trial,
+    earlyAccess: !BILLING_ENABLED,
     loading: profileLoading || entitlementsLoading,
     profile,
     isAdmin: Boolean(profile?.is_admin),

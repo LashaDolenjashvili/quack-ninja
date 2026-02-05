@@ -3,15 +3,13 @@
 type WorkspaceTopBarProps = {
   title: string;
   onOpenSchema?: () => void;
-  trialLabel?: string | null;
-  trialEndsAtLabel?: string | null;
+  statusLabel?: string | null;
 };
 
 export function WorkspaceTopBar({
   title,
   onOpenSchema,
-  trialLabel = null,
-  trialEndsAtLabel = null,
+  statusLabel = null,
 }: WorkspaceTopBarProps) {
   return (
     <div className="sticky top-0 z-20 border-b border-[color:var(--border)] bg-[color:var(--bg-surface)]">
@@ -32,14 +30,9 @@ export function WorkspaceTopBar({
         </div>
 
         <div className="ml-auto flex flex-wrap items-center gap-2 text-xs text-[color:var(--text-secondary)]">
-          {trialLabel ? (
-            <span
-              className="inline-flex items-center gap-2 rounded-full border border-[#BFECE1] bg-[#EAFBF6] px-2 py-0.5 font-semibold text-[#0B6D58]"
-              title={
-                trialEndsAtLabel ? `Pro trial ends ${trialEndsAtLabel}` : "Pro trial"
-              }
-            >
-              Pro trial • {trialLabel} left
+          {statusLabel ? (
+            <span className="inline-flex items-center gap-2 rounded-full border border-[#BFECE1] bg-[#EAFBF6] px-2 py-0.5 font-semibold text-[#0B6D58]">
+              {statusLabel}
             </span>
           ) : null}
         </div>

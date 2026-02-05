@@ -13,7 +13,6 @@ import { Card } from "@/src/components/ui/Card";
 import { SectionHeader } from "@/src/components/Marketing/SectionHeader";
 import { Footer } from "@/src/components/layout/Footer";
 import { SQL_DIALECT_DESCRIPTION, SQL_DIALECT_LABEL } from "@/src/lib/sqlDialect";
-const trialEnabled = process.env.NEXT_PUBLIC_TRIAL_ENABLED === "true";
 
 const faqs = [
   {
@@ -141,11 +140,10 @@ export default function MarketingPage() {
               <div className="flex flex-wrap items-center gap-4">
                 <HeroCta />
               </div>
-              {trialEnabled ? (
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/70">
-                  Includes a 7-day Pro trial. No card.
-                </p>
-              ) : null}
+              <p className="text-xs font-semibold text-white/70">
+                Payments are offline for now — Pro features are unlocked for
+                early users in exchange for feedback.
+              </p>
 
               <Card variant="glass" className="rounded-3xl p-8">
                 <p className="text-base font-semibold text-white/90">

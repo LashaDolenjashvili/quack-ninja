@@ -1,19 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase, supabaseConfigured } from "@/src/lib/supabaseClient";
-import { usePlan } from "@/src/lib/usePlan";
 import { Logo } from "@/src/components/Logo";
 import { useAuth } from "@/src/components/auth/AuthProvider";
+import { usePlan } from "@/src/lib/usePlan";
 
 type AppHeaderProps = {
   variant?: "landing" | "docs";
 };
 
 export function AppHeader({ variant = "landing" }: AppHeaderProps) {
-  const { plan, loading, trial } = usePlan();
   const { user, loading: authLoading } = useAuth();
+  const { plan, earlyAccess } = usePlan();
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
@@ -24,12 +24,6 @@ export function AppHeader({ variant = "landing" }: AppHeaderProps) {
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-
-  const planLabel = useMemo(() => {
-    if (loading) return "...";
-    if (trial?.active) return "Pro trial";
-    return plan === "pro" ? "Pro" : "Free";
-  }, [loading, plan, trial?.active]);
 
   const status = authLoading
     ? "loading"
@@ -84,7 +78,7 @@ export function AppHeader({ variant = "landing" }: AppHeaderProps) {
           {status === "in" ? (
             <div className="flex items-center gap-3">
               <span className="rounded-full border border-white/30 px-3 py-1 text-xs font-semibold text-white">
-                {planLabel}
+                {earlyAccess ? "Pro (Early Access)" : plan === "pro" ? "Pro" : "Free"}
               </span>
               {user?.email ? (
                 <span className="hidden max-w-[160px] truncate text-xs text-white/80 md:inline">

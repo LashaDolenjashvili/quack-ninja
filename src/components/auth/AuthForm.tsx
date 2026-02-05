@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { Banner } from "@/src/components/ui/banner";
 import { Button } from "@/src/components/ui/button";
 import { supabase, supabaseConfigured } from "@/src/lib/supabaseClient";
-import { TRIAL_ENABLED_CLIENT } from "@/src/lib/trial";
 import { logClientError } from "@/src/lib/logger";
 import Link from "next/link";
 
@@ -43,30 +42,11 @@ export function AuthForm({ mode }: AuthFormProps) {
           throw signUpError;
         }
         if (data.user) {
-          const session =
-            data.session ?? (await supabase.auth.getSession()).data.session;
-          const token = session?.access_token ?? null;
-          if (token) {
-            const functionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/start-trial`;
-            try {
-              await fetch(functionUrl, {
-                method: "POST",
-                headers: { Authorization: `Bearer ${token}` },
-              });
-            } catch (err) {
-              logClientError(err, "Trial start request failed");
-            }
-            if (TRIAL_ENABLED_CLIENT) {
-              localStorage.setItem("filesql-trial-started", "true");
-            }
-          } else {
-            await supabase.from("profiles").upsert({
-              id: data.user.id,
-              email: data.user.email ?? email,
-              plan: "free",
-              trial_consumed: TRIAL_ENABLED_CLIENT,
-            });
-          }
+          await supabase.from("profiles").upsert({
+            id: data.user.id,
+            email: data.user.email ?? email,
+            plan: "free",
+          });
         }
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -138,11 +118,6 @@ export function AuthForm({ mode }: AuthFormProps) {
           >
             Forgot password?
           </Link>
-        </div>
-      ) : null}
-      {mode === "sign-up" && TRIAL_ENABLED_CLIENT ? (
-        <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--bg-muted)] px-3 py-2 text-xs text-[color:var(--text-secondary)]">
-          Creating an account starts your 7-day Pro trial.
         </div>
       ) : null}
       {error ? (

@@ -1,48 +1,30 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { supabase, supabaseConfigured } from "@/src/lib/supabaseClient";
 import { buttonClassName } from "@/src/components/ui/button";
 import { usePlan } from "@/src/lib/usePlan";
-import { useTrialCountdown } from "@/src/lib/useTrialCountdown";
-import { formatTrialEndDate } from "@/src/lib/trial";
 import { useConsoleSession } from "@/src/components/ConsoleSessionProvider";
 import { getPlanDisplay } from "@/src/lib/planDisplay";
-import { getUpgradeHref } from "@/src/lib/upgrade";
 
 export function SettingsView() {
-  const { plan, loading, profile, isAdmin, refresh, trial } = usePlan();
+  const { plan, loading, profile, isAdmin, refresh, earlyAccess } = usePlan();
   const { savedQueries } = useConsoleSession();
   const savedCount = savedQueries.length;
-  const showTrialDebug =
-    typeof window !== "undefined" &&
-    process.env.NEXT_PUBLIC_SHOW_TRIAL_DEBUG === "true";
   const [adminTargetId, setAdminTargetId] = useState("");
   const [adminStatus, setAdminStatus] = useState<string | null>(null);
   const [adminWorking, setAdminWorking] = useState(false);
   const planLabel = loading
     ? "Loading..."
-    : trial.active
-      ? "Pro Trial"
+    : earlyAccess
+      ? "Pro (Early Access)"
       : plan === "pro"
         ? "Pro"
         : "Free";
-  const isPaidPro = plan === "pro" && !trial.active;
-  const upgradeHref = getUpgradeHref(Boolean(profile));
+  const isPaidPro = plan === "pro";
   const freePlan = getPlanDisplay("free");
   const proPlan = getPlanDisplay("pro");
   const activePlan = plan === "pro" ? proPlan : freePlan;
-  const trialCountdown = useTrialCountdown(
-    trial.serverNow,
-    trial.endsAt,
-    trial.active,
-    trial.startedAt
-  );
-  const trialEndsAtLabel = useMemo(
-    () => (trial.active ? formatTrialEndDate(trial.endsAt) : null),
-    [trial.active, trial.endsAt]
-  );
   const targetId = useMemo(
     () => adminTargetId.trim() || profile?.id || "",
     [adminTargetId, profile?.id]
@@ -104,14 +86,19 @@ export function SettingsView() {
               Manage your plan, limits, and saved queries.
             </p>
           </div>
-          {!isPaidPro && !loading ? (
-            <Link
-              href={upgradeHref}
-              className={buttonClassName({ variant: "primary", size: "md" })}
+          <div className="flex flex-col items-start gap-3">
+            <button
+              type="button"
+              disabled
+              className={buttonClassName({
+                variant: "primary",
+                size: "md",
+                className: "cursor-not-allowed opacity-80",
+              })}
             >
-              Upgrade to Pro
-            </Link>
-          ) : null}
+              Billing not live yet
+            </button>
+          </div>
         </div>
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[1.4fr_0.9fr]">
@@ -129,11 +116,6 @@ export function SettingsView() {
                     <span className="h-2 w-2 rounded-full bg-[#09CEA4]" />
                     Active
                   </span>
-                  {trial.active && trialEndsAtLabel ? (
-                    <span className="text-xs text-[#5B6B82]">
-                      Ends {trialEndsAtLabel}
-                    </span>
-                  ) : null}
                 </div>
               </div>
               <div className="text-sm text-[#5B6B82]">
@@ -141,66 +123,10 @@ export function SettingsView() {
               </div>
             </div>
 
-            {trial.active ? (
-              <div className="mt-5 rounded-xl border border-[#E6EEF7] bg-[#F7FAFC] px-4 py-3 text-sm text-[#5B6B82]">
-                After your trial, you’ll switch to Free automatically. No card
-                required.
-              </div>
-            ) : trial.hasEnded ? (
-              <div className="mt-5 rounded-xl border border-[#F3D2D2] bg-[#FEF5F5] px-4 py-3 text-sm text-[#9C2B2B]">
-                Trial ended — you’re on Free now.
-              </div>
-            ) : null}
+            <div className="mt-5 rounded-xl border border-[#E6EEF7] bg-[#F7FAFC] px-4 py-3 text-sm text-[#5B6B82]">
+              Billing isn’t live yet. You have full Pro limits for now.
+            </div>
 
-            {trial.enabled ? (
-              <div className="mt-6 space-y-3">
-                <div className="flex items-center justify-between text-xs text-[#5B6B82]">
-                  <span>
-                    Started:{" "}
-                    {trial.startedAt ? formatTrialEndDate(trial.startedAt) : "—"}
-                  </span>
-                  <span>
-                    Ends: {trial.endsAt ? formatTrialEndDate(trial.endsAt) : "—"}
-                  </span>
-                </div>
-                <div className="h-2 rounded-full bg-[#E6EEF7]">
-                  <div
-                    className="h-2 rounded-full bg-[#09CEA4]"
-                    style={{
-                      width: trial.active
-                        ? "70%"
-                        : trial.hasEnded
-                          ? "100%"
-                          : "0%",
-                    }}
-                  />
-                </div>
-                {trial.active ? (
-                  <div className="text-xs text-[#5B6B82]">
-                    {trialCountdown ? `${trialCountdown} left` : "—"}
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-
-            {trial.active && trialCountdown ? (
-              Number(trialCountdown.replace(/\D/g, "")) <= 2 ? (
-                <div className="mt-4 rounded-xl border border-[#F3D2D2] bg-[#FEF5F5] px-4 py-3 text-sm text-[#9C2B2B]">
-                  Trial ends soon — upgrade to keep Pro limits.
-                </div>
-              ) : null
-            ) : null}
-
-            {showTrialDebug ? (
-              <details className="mt-4 rounded-xl border border-[#E6EEF7] bg-[#F7FAFC] px-4 py-3 text-xs text-[#5B6B82]">
-                <summary className="cursor-pointer font-semibold text-[#0B1220]">
-                  Trial debug
-                </summary>
-                <pre className="mt-2 whitespace-pre-wrap text-[11px] text-[#0B1220]">
-{JSON.stringify(trial, null, 2)}
-                </pre>
-              </details>
-            ) : null}
           </section>
 
           <section className="rounded-2xl border border-slate-200/60 bg-white/90 p-6 shadow-[0_20px_60px_rgba(2,6,23,0.08)] md:p-8">
@@ -212,10 +138,12 @@ export function SettingsView() {
             </div>
 
             <div className="mt-5 overflow-hidden rounded-xl border border-[#E6EEF7]">
-              <div className="grid grid-cols-3 bg-[#F7FAFC] text-xs font-semibold uppercase tracking-[0.2em] text-[#7A8AA1]">
+              <div className={`grid ${earlyAccess ? "grid-cols-2" : "grid-cols-3"} bg-[#F7FAFC] text-xs font-semibold uppercase tracking-[0.2em] text-[#7A8AA1]`}>
                 <div className="px-4 py-2">Limit</div>
-                <div className="px-4 py-2 text-right">Your plan</div>
-                {!isPaidPro ? (
+                <div className="px-4 py-2 text-right">
+                  {earlyAccess ? "Pro (current)" : "Your plan"}
+                </div>
+                {!earlyAccess && !isPaidPro ? (
                   <div className="px-4 py-2 text-right">Pro</div>
                 ) : null}
               </div>
@@ -228,13 +156,13 @@ export function SettingsView() {
               ].map(([label, mine, pro]) => (
                 <div
                   key={label}
-                  className="grid grid-cols-3 border-t border-[#E6EEF7] text-sm text-[#5B6B82]"
+                  className={`grid ${earlyAccess ? "grid-cols-2" : "grid-cols-3"} border-t border-[#E6EEF7] text-sm text-[#5B6B82]`}
                 >
                   <div className="px-4 py-2">{label}</div>
                   <div className="px-4 py-2 text-right text-[#0B1220]">
                     {mine}
                   </div>
-                  {!isPaidPro ? (
+                  {!earlyAccess && !isPaidPro ? (
                     <div className="px-4 py-2 text-right text-[#0B1220]">
                       {pro}
                     </div>
@@ -243,30 +171,14 @@ export function SettingsView() {
               ))}
             </div>
 
-            {!isPaidPro ? (
-              <div className="mt-5 rounded-xl border border-[#E6EEF7] bg-[#F7FAFC] px-4 py-3 text-sm text-[#5B6B82]">
-                <p className="font-semibold text-[#0B1220]">
-                  Need bigger exports?
-                </p>
-                <p className="mt-1">
-                  Upgrade to Pro for larger files, previews, and exports.
-                </p>
-                <Link
-                  href={upgradeHref}
-                  className={buttonClassName({
-                    variant: "primary",
-                    size: "sm",
-                    className: "mt-3 inline-flex",
-                  })}
-                >
-                  Upgrade to Pro
-                </Link>
-              </div>
-            ) : (
-              <div className="mt-5 rounded-xl border border-[#E6EEF7] bg-[#F7FAFC] px-4 py-3 text-sm text-[#5B6B82]">
-                You’re on Pro. Manage billing from your account settings.
-              </div>
-            )}
+            <div className="mt-5 rounded-xl border border-[#E6EEF7] bg-[#F7FAFC] px-4 py-3 text-sm text-[#5B6B82]">
+              <p className="font-semibold text-[#0B1220]">
+                Pro (Early Access)
+              </p>
+              <p className="mt-1">
+                Full Pro limits are unlocked while billing is offline.
+              </p>
+            </div>
           </section>
         </div>
 
