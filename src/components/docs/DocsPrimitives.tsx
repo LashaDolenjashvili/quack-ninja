@@ -13,14 +13,14 @@ export function Callout({
 }) {
   const styles = {
     note:
-      "border-[color:var(--border)] bg-[color:var(--bg-muted)] text-[color:var(--text-primary)]",
-    tip: "border-[#C2F3E9] bg-[#ECFBF7] text-[color:var(--text-primary)]",
+      "border-[#DDE7F5] bg-[#F4F8FF] text-[color:var(--text-primary)]",
+    tip: "border-[#BFECE1] bg-[#EAFBF6] text-[color:var(--text-primary)]",
     warning: "border-[#F7C56A] bg-[#FDF5E8] text-[#6B4B0A]",
   };
   const label = title ?? (tone === "tip" ? "Tip" : tone === "warning" ? "Warning" : "Note");
   return (
-    <div className={`rounded-xl border px-4 py-3 text-sm ${styles[tone]}`}>
-      <p className="text-xs font-semibold uppercase tracking-[0.2em]">
+    <div className={`rounded-2xl border px-4 py-4 text-sm shadow-[0_16px_40px_rgba(11,18,32,0.08)] ${styles[tone]}`}>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.3em]">
         {label}
       </p>
       <div className="mt-2 space-y-2 text-sm text-[color:var(--text-secondary)]">
@@ -63,18 +63,23 @@ export function CodeBlock({
     }
   };
   return (
-    <div className="relative overflow-hidden rounded-xl border border-[color:var(--border)] bg-[#0B1220]">
-      <div className="flex items-center justify-between border-b border-white/10 px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-white/60">
-        <span>{language}</span>
+    <div className="relative overflow-hidden rounded-2xl border border-[#E6EEF7] bg-[#0B1220] shadow-[0_20px_60px_rgba(2,6,23,0.25)]">
+      <div className="flex items-center justify-between border-b border-white/10 px-4 py-2 text-[11px] uppercase tracking-[0.2em] text-white/70">
+        <div className="flex items-center gap-2">
+          <span className="rounded-full border border-white/20 bg-white/10 px-2 py-0.5 text-[10px] font-semibold text-white/80">
+            DuckDB SQL
+          </span>
+          <span>{language}</span>
+        </div>
         <button
           type="button"
           onClick={copy}
-          className="rounded-md border border-white/10 px-2 py-1 text-[11px] text-white/70"
+          className="rounded-md border border-white/20 px-2 py-1 text-[11px] text-white/80 hover:bg-white/10"
         >
           {copied ? "Copied" : "Copy"}
         </button>
       </div>
-      <pre className="overflow-auto px-4 py-3 text-xs text-[#E6EEF7]">
+      <pre className="overflow-auto px-4 py-4 text-xs text-[#E6EEF7]">
         <code>{code}</code>
       </pre>
     </div>

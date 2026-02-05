@@ -1,0 +1,5 @@
+payment_id,customer_id,amount,created_at,method
+P9001,C001,49.99,2026-01-02,card
+P9002,C002,100.00,2026-01-05,card
+P9003,C003,20.00,2026-01-06,card
+P9004,C004,250.00,2026-01-07,bank_transfer

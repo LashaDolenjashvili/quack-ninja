@@ -1,101 +1,63 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import type { DocsNavGroup } from "@/src/docs/docsContent";
-import { docsSearchIndex } from "@/src/docs/docsContent";
 
 export function DocsSidebar({ nav }: { nav: DocsNavGroup[] }) {
   const pathname = usePathname();
-  const [query, setQuery] = useState("");
-  const normalized = query.trim().toLowerCase();
-  const filtered = useMemo(() => {
-    if (!normalized) {
-      return nav;
-    }
-    return nav
-      .map((group) => ({
-        ...group,
-        items: group.items.filter((item) =>
-          item.title.toLowerCase().includes(normalized)
-        ),
-      }))
-      .filter((group) => group.items.length > 0);
-  }, [nav, normalized]);
-  const matches = useMemo(() => {
-    if (!normalized) {
-      return [];
-    }
-    return docsSearchIndex.filter((item) =>
-      item.title.toLowerCase().includes(normalized)
-    );
-  }, [normalized]);
 
   return (
-    <aside className="hidden w-[260px] shrink-0 border-r border-[#E6EEF7] bg-white px-5 py-6 lg:block">
-      <label className="text-xs font-semibold uppercase tracking-[0.2em] text-[#5B6B82]">
-        Search
-        <input
-          type="text"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Find a topic"
-          className="mt-2 w-full rounded-lg border border-[#E6EEF7] bg-[#F7FAFC] px-3 py-2 text-sm text-[#0B1220] placeholder:text-[#97A3B8]"
-        />
+    <aside className="sticky top-24 hidden w-[270px] shrink-0 rounded-2xl border border-slate-200/60 bg-white/80 p-6 shadow-[0_20px_60px_rgba(2,6,23,0.08)] lg:block">
+      <label className="text-[11px] font-semibold uppercase tracking-[0.3em] text-[#09A483]">
+        Browse
       </label>
 
       <div className="mt-6 space-y-5">
-        {normalized ? (
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#5B6B82]">
-              Results
+        {nav.map((group) => (
+          <div key={group.label}>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-[#7A8AA1]">
+              {group.label}
             </p>
             <nav className="mt-2 space-y-1 text-sm">
-              {matches.length ? (
-                matches.map((item) => (
+              {group.items.map((item) => {
+                const isActive = pathname === item.href;
+                return (
                   <Link
                     key={item.href}
                     href={item.href}
-                    className="block rounded-lg px-3 py-2 text-[#4A5A72] hover:bg-[#F7FAFC]"
+                    className={`block rounded-lg px-3 py-2 ${
+                      isActive
+                        ? "bg-[#EAFBF6] text-[#0B6D58] font-semibold"
+                        : "text-[#5B6B82] hover:bg-[#F3F7FB]"
+                    }`}
                   >
                     {item.title}
                   </Link>
-                ))
-              ) : (
-                <p className="px-3 py-2 text-xs text-[#97A3B8]">
-                  No matches found.
-                </p>
-              )}
+                );
+              })}
             </nav>
           </div>
-        ) : (
-          filtered.map((group) => (
-            <div key={group.label}>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#5B6B82]">
-                {group.label}
-              </p>
-              <nav className="mt-2 space-y-1 text-sm">
-                {group.items.map((item) => {
-                  const isActive = pathname === item.href;
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={`block rounded-lg px-3 py-2 ${
-                        isActive
-                          ? "bg-[#EEF4FB] text-[#003C79] font-semibold"
-                          : "text-[#4A5A72] hover:bg-[#F7FAFC]"
-                      }`}
-                    >
-                      {item.title}
-                    </Link>
-                  );
-                })}
-              </nav>
-            </div>
-          ))
-        )}
+        ))}
+        <div className="mt-8 rounded-xl border border-[#E6EEF7] bg-[#F7FAFC] p-4 text-xs text-[#5B6B82]">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-[#7A8AA1]">
+            Quick links
+          </p>
+          <div className="mt-3 space-y-2">
+            <Link href="/app/console" className="block hover:text-[#003C79]">
+              Console
+            </Link>
+            <Link href="/pricing" className="block hover:text-[#003C79]">
+              Pricing
+            </Link>
+            <Link href="/privacy-policy" className="block hover:text-[#003C79]">
+              Privacy
+            </Link>
+            <a href="mailto:support@quackninja.com" className="block hover:text-[#003C79]">
+              Contact
+            </a>
+          </div>
+        </div>
       </div>
     </aside>
   );

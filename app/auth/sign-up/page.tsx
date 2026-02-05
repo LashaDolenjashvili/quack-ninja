@@ -26,10 +26,14 @@ export default function SignUpPage() {
         title="Sign up"
         subtitle="Create your QuackNinja account"
         badge={trialEnabled ? `Includes a ${TRIAL_DAYS}-day Pro trial` : null}
+        subhead={
+          trialEnabled
+            ? `Start with Pro features for ${TRIAL_DAYS} days.`
+            : "Start with the Free plan and upgrade any time."
+        }
         helper={
           trialEnabled ? (
-            <div className="space-y-1 text-sm text-[#5B6B82]">
-              <p>Start with Pro features for {TRIAL_DAYS} days.</p>
+            <div className="space-y-1 text-sm text-[color:var(--text-secondary)]">
               <p>
                 No card required. You’ll switch to Free when the trial ends unless
                 you upgrade.
@@ -37,22 +41,21 @@ export default function SignUpPage() {
               <button
                 type="button"
                 onClick={() => setShowTrialTerms(true)}
-                className="text-sm font-semibold text-[#003C79] hover:text-[#002f60]"
+                className="text-sm font-semibold text-[color:var(--color-primary)] hover:text-[#002f60]"
               >
                 Trial terms
               </button>
             </div>
-          ) : (
-            <p className="text-sm text-[#5B6B82]">
-              Start with the Free plan and upgrade any time.
-            </p>
-          )
+          ) : null
         }
       >
         <AuthForm mode="sign-up" />
-        <p className="mt-6 text-sm text-[#5B6B82]">
+        <p className="mt-6 text-sm text-[color:var(--text-secondary)]">
           Already have an account?{" "}
-          <Link href="/auth/sign-in" className="font-semibold text-[#003C79]">
+          <Link
+            href="/auth/sign-in"
+            className="font-semibold text-[color:var(--color-primary)]"
+          >
             Sign in
           </Link>
         </p>

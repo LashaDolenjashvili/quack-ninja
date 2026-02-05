@@ -14,6 +14,7 @@ import {
   Steps,
 } from "@/src/components/docs/DocsPrimitives";
 import { FeatureFlags } from "@/src/config/flags";
+import { SQL_DIALECT_LABEL } from "@/src/lib/sqlDialect";
 
 export type DocsNavGroup = {
   label: string;
@@ -55,6 +56,7 @@ export const docsNav: DocsNavGroup[] = [
     items: [
       { title: "Import CSV", href: "/docs/import/csv" },
       ...(supportsExcel ? [{ title: "Import Excel", href: "/docs/import/excel" }] : []),
+      ...(supportsParquet ? [{ title: "Import Parquet", href: "/docs/import/parquet" }] : []),
     ],
   },
   {
@@ -74,12 +76,15 @@ export const docsNav: DocsNavGroup[] = [
 export const docsSearchIndex = [
   { title: "Overview", href: "/docs" },
   { title: "What QuackNinja is", href: "/docs#what-is-filesql" },
+  { title: "Query tabs", href: "/docs#query-tabs" },
+  { title: "Saved queries", href: "/docs#saved-queries" },
   { title: "What it’s for", href: "/docs#what-its-for" },
   { title: "3-minute start", href: "/docs#three-minute-start" },
   { title: "Privacy", href: "/docs#privacy-model" },
   { title: "Import formats and limits", href: "/docs#import-formats" },
   { title: "Preview vs export", href: "/docs#preview-vs-export" },
   { title: "Copy/paste examples", href: "/docs#sql-snippets" },
+  { title: "SQL dialect", href: "/docs#sql-dialect" },
   { title: "Fix column types", href: "/docs#type-casting" },
   { title: "Common tasks", href: "/docs#core-flows" },
   { title: "Plan limits at a glance", href: "/docs#plan-limits" },
@@ -100,6 +105,13 @@ export const docsSearchIndex = [
         { title: "Wizard flow", href: "/docs/import/excel#wizard" },
         { title: "Range detection", href: "/docs/import/excel#range-detection" },
         { title: "Header row behavior", href: "/docs/import/excel#headers" },
+      ]
+    : []),
+  ...(supportsParquet
+    ? [
+        { title: "Import Parquet", href: "/docs/import/parquet" },
+        { title: "Parquet import basics", href: "/docs/import/parquet#basics" },
+        { title: "Types preserved", href: "/docs/import/parquet#types" },
       ]
     : []),
   { title: "Session persistence", href: "/docs/session" },
@@ -170,6 +182,8 @@ export function getDocsPage(slug: string, ctx: DocsContext): DocsPage {
       return csvPage();
     case "import-excel":
       return excelPage();
+    case "import-parquet":
+      return parquetPage(ctx);
     case "session":
       return sessionPage();
     case "export":
@@ -199,6 +213,15 @@ function overviewPage(ctx: DocsContext): DocsPage {
             title: "Import Excel",
             body: "Guided import with sheet selection.",
             href: "/docs/import/excel",
+          },
+        ]
+      : []),
+    ...(supportsParquet
+      ? [
+          {
+            title: "Import Parquet",
+            body: "Preserves types and loads fast.",
+            href: "/docs/import/parquet",
           },
         ]
       : []),
@@ -243,6 +266,43 @@ function overviewPage(ctx: DocsContext): DocsPage {
                 This is a single-session experience per browser tab.
               </p>
             </Callout>
+          </>
+        ),
+      },
+      {
+        id: "sql-dialect",
+        heading: "SQL dialect",
+        body: (
+          <>
+            <p>
+              QuackNinja uses {SQL_DIALECT_LABEL}. If you’re coming from
+              Postgres/MySQL, most queries work as-is, but some functions and
+              date handling differ.
+            </p>
+          </>
+        ),
+      },
+      {
+        id: "query-tabs",
+        heading: "Query tabs",
+        body: (
+          <>
+            <p>
+              The SQL editor supports multiple tabs. Each tab keeps its own SQL
+              so you can switch between queries without losing work.
+            </p>
+          </>
+        ),
+      },
+      {
+        id: "saved-queries",
+        heading: "Saved queries",
+        body: (
+          <>
+            <p>
+              Save queries you run often and reopen them later. Free plans have
+              a small cap; Pro removes the limit.
+            </p>
           </>
         ),
       },
@@ -301,6 +361,12 @@ function overviewPage(ctx: DocsContext): DocsPage {
         body: (
           <>
             <p>Supported formats: {joinList(formatList)}.</p>
+            {supportsParquet ? (
+              <p className="mt-2">
+                Parquet keeps column types as-is on import (no extra type
+                detection step).
+              </p>
+            ) : null}
             <ul className="list-disc pl-5">
               <li>Max single file size (your plan): {formatBytes(ctx.limits.maxSingleFileBytes)}.</li>
               <li>Total session size (your plan): {formatBytes(ctx.limits.maxSessionFileBytes)}.</li>
@@ -316,6 +382,10 @@ function overviewPage(ctx: DocsContext): DocsPage {
             <p>
               Preview keeps the grid fast. Export uses your full SQL but
               respects your plan’s row cap.
+            </p>
+            <p className="mt-2">
+              Export always uses the SQL currently in the editor. There is no
+              full-table export shortcut.
             </p>
             <ul className="list-disc pl-5">
               <li>Preview limit: {ctx.limits.previewLimit.toLocaleString()} rows.</li>
@@ -363,14 +433,17 @@ function overviewPage(ctx: DocsContext): DocsPage {
         id: "core-flows",
         heading: "Common tasks",
         body: (
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-2">
             {coreCards.map((card) => (
               <a
                 key={card.title}
                 href={card.href}
-                className="rounded-xl border border-[#E6EEF7] bg-white p-4 text-sm text-[#4A5A72] hover:border-[#CFE0F4]"
+                className="rounded-2xl border border-slate-200/60 bg-white/90 p-5 text-sm text-[#4A5A72] shadow-[0_18px_48px_rgba(11,18,32,0.08)] transition hover:-translate-y-0.5 hover:border-[#9ADBF1]"
               >
-                <p className="text-base font-semibold text-[#0B1220]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-[#09A483]">
+                  Guide
+                </p>
+                <p className="mt-2 text-base font-semibold text-[#0B1220]">
                   {card.title}
                 </p>
                 <p className="mt-2">{card.body}</p>
@@ -458,6 +531,10 @@ function quickstartPage(): DocsPage {
         body: (
           <>
             <p>Tables appear in the table list after import.</p>
+            <p className="mt-2">
+              Run queries in the active tab. Each tab keeps its own SQL so you
+              can switch between queries without losing work.
+            </p>
             <CodeBlock
               code={`SELECT * FROM customers LIMIT 20;\n\nSELECT o.id, c.name\nFROM orders o\nJOIN customers c ON c.id = o.customer_id\nLIMIT 50;`}
             />
@@ -471,6 +548,10 @@ function quickstartPage(): DocsPage {
           <>
             <p>
               Use Export to download a CSV without showing every row on screen.
+            </p>
+            <p className="mt-2">
+              Export uses the SQL currently in the editor. There is no table-only
+              export path.
             </p>
             <Callout tone="tip">
               <p>
@@ -502,6 +583,10 @@ function csvPage(): DocsPage {
               <li>Header row: on.</li>
               <li>All columns are imported as text.</li>
             </ul>
+            <p className="mt-2">
+              You can enable type detection during import. For large files,
+              QuackNinja may keep text types for stability.
+            </p>
             <Callout tone="note">
               <p>
                 Need number or date columns? Use “Detect column types” in the
@@ -658,6 +743,88 @@ function excelPage(): DocsPage {
   };
 }
 
+function parquetPage(ctx: DocsContext): DocsPage {
+  if (!supportsParquet) {
+    return {
+      slug: "import-parquet",
+      title: "Import Parquet",
+      description: "Parquet imports are not enabled in this build.",
+      sections: [
+        {
+          id: "parquet-disabled",
+          heading: "Parquet imports are disabled",
+          body: (
+            <Callout tone="warning">
+              <p>
+                Parquet import is not enabled in this build. CSV and Excel
+                imports are available from the Console.
+              </p>
+            </Callout>
+          ),
+        },
+      ],
+    };
+  }
+
+  return {
+    slug: "import-parquet",
+    title: "Import Parquet",
+    description: "Preserve column types and query immediately.",
+    sections: [
+      {
+        id: "basics",
+        heading: "Parquet import basics",
+        body: (
+          <>
+            <Steps
+              items={[
+                <span key="1">Attach a .parquet file.</span>,
+                <span key="2">Confirm the table name.</span>,
+                <span key="3">Query it like any other table.</span>,
+              ]}
+            />
+            <p className="mt-3">
+              Parquet files import quickly and keep column types intact.
+            </p>
+          </>
+        ),
+      },
+      {
+        id: "types",
+        heading: "Types are preserved",
+        body: (
+          <>
+            <p>
+              Parquet keeps the schema defined in the file. There is no extra
+              type detection step during import.
+            </p>
+            <Callout tone="tip">
+              <p>
+                If you need a different type, use CAST or TRY_CAST in your SQL.
+              </p>
+            </Callout>
+          </>
+        ),
+      },
+      {
+        id: "limits",
+        heading: "Plan limits still apply",
+        body: (
+          <>
+            <p>
+              Parquet imports follow your plan’s file size and session limits.
+            </p>
+            <ul className="list-disc pl-5">
+              <li>Max single file size: {formatBytes(planCaps[ctx.plan].maxSingleFileBytes)}.</li>
+              <li>Total session size: {formatBytes(planCaps[ctx.plan].maxSessionFileBytes)}.</li>
+            </ul>
+          </>
+        ),
+      },
+    ],
+  };
+}
+
 function sessionPage(): DocsPage {
   return {
     slug: "session",
@@ -728,6 +895,10 @@ function exportPage(): DocsPage {
             <p>
               Export downloads the results of your SQL without showing every
               row on screen.
+            </p>
+            <p className="mt-2">
+              Export always uses the SQL currently in the editor. There is no
+              full-table export shortcut.
             </p>
             <CodeBlock
               code={`SELECT * FROM customers WHERE status = 'active';`}

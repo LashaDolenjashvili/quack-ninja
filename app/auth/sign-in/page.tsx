@@ -32,17 +32,16 @@ export default function SignInPage({ searchParams }: SignInPageProps) {
       <AuthPageLayout
         title="Sign in"
         subtitle="Welcome back to QuackNinja"
-        helper={
-          <p className="text-sm text-[#5B6B82]">
-            Sign in to access your console. Your files stay on your computer.
-          </p>
-        }
+        subhead="Sign in to access your console. Your files stay on your computer."
       >
         <ConfirmEmailNotice notice={notice} email={email} />
         <AuthForm mode="sign-in" />
-        <p className="mt-6 text-sm text-[#5B6B82]">
+        <p className="mt-6 text-sm text-[color:var(--text-secondary)]">
           Need an account?{" "}
-          <Link href="/auth/sign-up" className="font-semibold text-[#003C79]">
+          <Link
+            href="/auth/sign-up"
+            className="font-semibold text-[color:var(--color-primary)]"
+          >
             Sign up
           </Link>
         </p>

@@ -818,7 +818,7 @@ export function CsvImportModal({
               ) : null}
             </div>
             {preflight?.warnings?.length ? (
-              <Banner tone="error" className="mt-2">
+              <Banner tone="warning" className="mt-2">
                 {preflight.warnings.map((warning) => (
                   <p key={warning}>{warning}</p>
                 ))}
@@ -861,7 +861,7 @@ export function CsvImportModal({
         ) : null}
 
         {error ? (
-          <Banner tone="error" className="mt-4 text-sm">
+          <Banner tone="warning" className="mt-4 text-sm">
             {error}
           </Banner>
         ) : null}

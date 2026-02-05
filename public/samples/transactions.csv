@@ -1,0 +1,8 @@
+transaction_id,customer_id,amount,created_at,category
+T1001,C001,49.99,2026-01-02,subscription
+T1002,C002,120.00,2026-01-05,services
+T1003,C003,0.00,2026-01-05,services
+T1004,C003,-10.00,2026-01-06,refund_adjustment
+T1005,,75.00,2026-01-06,services
+T1006,C004,250.00,2026-01-07,hardware
+T1007,C005,15.00,2026-01-08,subscription

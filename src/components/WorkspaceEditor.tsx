@@ -26,6 +26,7 @@ import { useTrialCountdown } from "@/src/lib/useTrialCountdown";
 import { formatTrialEndDate } from "@/src/lib/trial";
 import { getUpgradeHref } from "@/src/lib/upgrade";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useConsoleSession } from "@/src/components/ConsoleSessionProvider";
 import {
   createSavedQuery,
@@ -43,6 +44,8 @@ import { getWhyUpgradeBullets } from "@/src/lib/planDisplay";
 import { getLimitText } from "@/src/lib/limitText";
 import { can } from "@/src/billing/plan";
 import { getUpgradeFix } from "@/src/billing/reasons";
+import { EXAMPLE_QUERIES, getExampleQueryById } from "@/src/lib/exampleQueries";
+import { SQL_DIALECT_LABEL, SQL_DIALECT_TOOLTIP } from "@/src/lib/sqlDialect";
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
   ssr: false,
@@ -92,6 +95,8 @@ function toAttachedSourceEntry(
 
 export function WorkspaceEditor() {
   const { plan, entitlements, trial, profile } = usePlan();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const supportsParquet = FeatureFlags.ENABLE_PARQUET;
   const supportsExcel = FeatureFlags.ENABLE_XLSX;
   const supportsMultipleFormats = supportsParquet || supportsExcel;
@@ -177,43 +182,6 @@ export function WorkspaceEditor() {
     () => getUpgradeHref(Boolean(profile)),
     [profile]
   );
-  const planBadge = useMemo(() => {
-    const label = trial.active ? "Pro trial" : plan === "pro" ? "Pro" : "Free";
-    const badgeClass =
-      plan === "pro" || trial.active
-        ? "border-[#BFECE1] bg-[#EAFBF6] text-[#0B6D58]"
-        : "border-[#E6EEF7] bg-[#F7FAFC] text-[#5B6B82]";
-    if (!trial.active) {
-      return (
-        <span
-          className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${badgeClass}`}
-        >
-          {label}
-        </span>
-      );
-    }
-    return (
-      <details className="relative">
-        <summary
-          className={`cursor-pointer list-none rounded-full border px-2.5 py-1 text-[11px] font-semibold ${badgeClass}`}
-        >
-          {label} • {trialCountdown ?? "..."} left
-        </summary>
-        <div className="absolute right-0 top-8 z-20 w-64 rounded-xl border border-[#E6EEF7] bg-white p-3 text-xs text-[#0B1220] shadow-[0_18px_48px_rgba(11,18,32,0.12)]">
-          <p className="font-semibold text-[#0B1220]">Pro trial active</p>
-          <p className="mt-1 text-[#5B6B82]">
-            Your trial ends on {trialEndsAtLabel ?? "soon"}.
-          </p>
-          <Link
-            href={upgradeHref}
-            className="mt-3 block rounded-lg bg-[#003C79] px-3 py-1.5 text-center text-xs font-semibold text-white"
-          >
-            Upgrade to keep Pro
-          </Link>
-        </div>
-      </details>
-    );
-  }, [plan, trial.active, trialCountdown, trialEndsAtLabel, upgradeHref]);
   const duckdb = useMemo(() => getDuckDBClient(), []);
   const activeTab = useMemo(
     () =>
@@ -365,7 +333,6 @@ export function WorkspaceEditor() {
   const [importProgress, setImportProgress] = useState<WorkerProgress | null>(
     null
   );
-  const [showTrialStartedBanner, setShowTrialStartedBanner] = useState(false);
   const [dismissTrialSoonBanner, setDismissTrialSoonBanner] = useState(false);
   const [dismissTrialEndedBanner, setDismissTrialEndedBanner] = useState(false);
   const copyToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -373,6 +340,8 @@ export function WorkspaceEditor() {
   const persistedAttachmentsRef = useRef<AttachedFileMeta[]>(persistedAttachments);
   const restoreStateRef = useRef<"idle" | "running" | "done">("idle");
   const restorePromiseRef = useRef<Promise<void> | null>(null);
+  const sampleLoadRef = useRef(false);
+  const exampleApplyRef = useRef(false);
   const consoleKey = consoleId ?? CONSOLE_KEY;
   const sessionBudgetBytes = limits.maxSessionFileBytes;
 
@@ -1007,6 +976,68 @@ export function WorkspaceEditor() {
     ]
   );
 
+  const loadSampleTables = useCallback(async () => {
+    const samples = [
+      { fileName: "customers.csv", tableName: "customers" },
+      { fileName: "transactions.csv", tableName: "transactions" },
+      { fileName: "payments.csv", tableName: "payments" },
+    ];
+    for (const sample of samples) {
+      const response = await fetch(`/samples/${sample.fileName}`);
+      if (!response.ok) {
+        throw new Error(`Failed to load ${sample.fileName}`);
+      }
+      const blob = await response.blob();
+      const file = new File([blob], sample.fileName, { type: "text/csv" });
+      const ok = await handleCsvImport({
+        file,
+        tableName: sample.tableName,
+        delimiter: ",",
+        header: true,
+        autoInfer: true,
+        fileType: "csv",
+      });
+      if (!ok) {
+        throw new Error(`Sample import failed for ${sample.tableName}`);
+      }
+    }
+  }, [handleCsvImport]);
+
+  useEffect(() => {
+    const loadSamples = searchParams?.get("loadSamples");
+    if (loadSamples !== "1" || sampleLoadRef.current) {
+      return;
+    }
+    sampleLoadRef.current = true;
+    void (async () => {
+      try {
+        await loadSampleTables();
+        setCopyToastMessage(
+          "Loaded sample tables: customers, transactions, payments"
+        );
+      } catch (err) {
+        logClientError(err, "Sample load failed");
+        setError("Couldn't load sample data. Please try again.");
+      } finally {
+        router.replace("/app/console");
+      }
+    })();
+  }, [loadSampleTables, router, searchParams]);
+
+  useEffect(() => {
+    const exampleId = searchParams?.get("example");
+    if (!exampleId || exampleApplyRef.current || !activeTab) {
+      return;
+    }
+    const example = getExampleQueryById(exampleId);
+    if (example) {
+      updateActiveTab({ sql: example.sql });
+      setActivePanel("results");
+    }
+    exampleApplyRef.current = true;
+    router.replace("/app/console");
+  }, [activeTab, router, searchParams, updateActiveTab]);
+
   const pickFileForType = useCallback(
     async (sourceType: "csv" | "xlsx" | "parquet") => {
       const acceptMap: Record<
@@ -1196,28 +1227,6 @@ export function WorkspaceEditor() {
     void syncSources();
   }, [attachedFiles, attachmentsHydrated, consoleKey, setPersistedAttachments]);
 
-  useEffect(() => {
-    if (!trial.active) {
-      return;
-    }
-    const flag = typeof window !== "undefined"
-      ? window.localStorage.getItem("filesql-trial-started")
-      : null;
-    if (flag) {
-      setShowTrialStartedBanner(true);
-      window.localStorage.removeItem("filesql-trial-started");
-    }
-  }, [trial.active]);
-
-  useEffect(() => {
-    if (!showTrialStartedBanner) {
-      return;
-    }
-    const timeout = setTimeout(() => {
-      setShowTrialStartedBanner(false);
-    }, 4000);
-    return () => clearTimeout(timeout);
-  }, [showTrialStartedBanner]);
 
   useEffect(() => {
     if (!trial.hasEnded) {
@@ -1616,10 +1625,7 @@ export function WorkspaceEditor() {
       ? `${previewRowLabel} (${showingSuffix})`
       : previewRowLabel
     : "No results yet";
-  const modeLabel =
-    sqlLimit !== null ? "LIMIT" : previewApplied ? "Preview" : "Full";
   const exportCapLabel = `${limitText.exportRows} (${plan === "pro" ? "Pro" : "Free"})`;
-  const attachPrimary = tableCount === 0;
   const preferredTable = useMemo(() => {
     if (selectedTable) {
       return selectedTable;
@@ -1646,32 +1652,17 @@ export function WorkspaceEditor() {
   };
 
   return (
-    <div className="grid min-h-screen grid-rows-[auto_1fr]">
+    <div className="grid min-h-screen grid-rows-[auto_1fr] bg-[color:var(--color-bg)] text-[color:var(--text-primary)]">
       <WorkspaceTopBar
-        planBadge={planBadge}
         title="Console"
-        tableCount={tableCount}
-        status={status}
-        hasRun={hasRun}
-        lastRunLabel={`${(runtimeMs / 1000).toFixed(2)}s`}
-        showingLabel={showingLabel}
-        modeLabel={hasRun ? modeLabel : null}
-        onAttach={handleAttachClick}
-        onExport={() => setShowExportModal(true)}
-        attachLabel={attachLabel}
-        importDisabled={importing}
-        running={status === "Running"}
-        exportDisabled={exportDisabled}
-        exporting={exporting}
         onOpenSchema={() => setShowSchemaDrawer(true)}
-        attachPrimary={attachPrimary}
         trialLabel={trial.active ? trialCountdown : null}
         trialEndsAtLabel={trial.active ? trialEndsAtLabel : null}
       />
 
       <div className="grid min-h-0 grid-cols-[320px_1fr] gap-0 overflow-hidden md:grid-cols-[320px_1fr]">
         <aside
-          className="hidden h-full overflow-y-auto border-r border-[#E6EEF7] bg-white p-6 md:block"
+          className="hidden h-full overflow-y-auto border-r border-[color:var(--border)] bg-[color:var(--bg-surface)] p-6 md:block"
           style={{ width: 320 }}
         >
           <div className="flex items-center justify-between">
@@ -1681,14 +1672,23 @@ export function WorkspaceEditor() {
                 {schema.length} tables
               </span>
             </div>
-            <button
-              type="button"
-              onClick={handleDetachAll}
-              disabled={attachedFiles.length === 0}
-              className="rounded-lg border border-[#E6EEF7] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#003C79] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79] disabled:opacity-50"
-            >
-              Detach all
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleAttachClick}
+                className="rounded-lg border border-[#003C79] bg-[#003C79] px-2.5 py-1 text-[11px] font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79]"
+              >
+                {attachLabel}
+              </button>
+              <button
+                type="button"
+                onClick={handleDetachAll}
+                disabled={attachedFiles.length === 0}
+                className="rounded-lg border border-[#E6EEF7] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#003C79] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79] disabled:opacity-50"
+              >
+                Detach all
+              </button>
+            </div>
           </div>
           <input
             type="text"
@@ -1703,7 +1703,6 @@ export function WorkspaceEditor() {
               Memory estimate
             </p>
             <div className="mt-2 space-y-1 text-[11px] text-[#5B6B82]">
-              <p>Session budget: {formatBytes(sessionBudgetBytes)}</p>
               <p>In use: {formatBytes(totalAttachedBytes)}</p>
               <p>Remaining: {formatBytes(sessionRemainingBytes)}</p>
             </div>
@@ -1721,7 +1720,7 @@ export function WorkspaceEditor() {
               </p>
             ) : null}
           </div>
-          <div className="mt-6 flex h-[calc(100vh-320px)] flex-col gap-4 overflow-y-auto pr-2 text-xs text-[#5B6B82]">
+          <div className="mt-8 flex h-[calc(100vh-320px)] flex-col gap-4 overflow-y-auto pr-2 text-xs text-[#5B6B82]">
             {showRestoreBanner ? (
               <div className="rounded-lg border border-[#E6EEF7] bg-[#F7FAFC] px-3 py-2 text-[11px] text-[#5B6B82]">
                 <p className="text-[11px] font-semibold text-[#0B1220]">
@@ -1757,6 +1756,9 @@ export function WorkspaceEditor() {
             {schema.length === 0 && missingAttachments.length === 0 ? (
               <div className="rounded-lg border border-dashed border-[#E6EEF7] bg-[#F7FAFC] px-3 py-4 text-center text-xs text-[#5B6B82]">
                 <p>Attach a {attachTypesLabel} file to get started.</p>
+                <p className="mt-1 text-[11px] text-[#7A8AA1]">
+                  You’ll query them with DuckDB SQL once attached.
+                </p>
                 <button
                   type="button"
                   onClick={() => setShowCsvImportModal(true)}
@@ -1781,22 +1783,25 @@ export function WorkspaceEditor() {
                     return (
                       <div
                         key={table.name}
-                        className={`group rounded-xl border p-3 ${
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => toggleTable(table.name)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            toggleTable(table.name);
+                          }
+                        }}
+                        className={`rounded-xl border p-3 ${
                           isSelected
                             ? "border-[#003C79] bg-[#EEF4FF]"
                             : isExpanded
                               ? "border-[#9ADBF1] bg-[#F2FAFF]"
                               : "border-[#E6EEF7] bg-[#F7FAFC]"
-                        }`}
+                        } transition hover:border-[#003C79]/60 hover:shadow-[0_10px_24px_rgba(11,18,32,0.08)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79]`}
                       >
                       <div className="flex items-center justify-between gap-2">
-                        <button
-                          type="button"
-                          onClick={() => toggleTable(table.name)}
-                          className="flex min-h-[40px] min-w-0 flex-1 items-center justify-between gap-3 rounded-lg px-2 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79]"
-                          aria-expanded={isExpanded}
-                          title={isExpanded ? "Collapse columns" : "Expand columns"}
-                        >
+                        <div className="flex min-w-0 flex-1 items-center gap-3 px-2">
                           <div className="flex min-w-0 flex-col items-start">
                             <span
                               className="truncate text-sm font-semibold text-[#0B1220]"
@@ -1813,96 +1818,90 @@ export function WorkspaceEditor() {
                               ) : null}
                             </div>
                           </div>
-                        </button>
-                        <div className="flex items-center gap-1 text-[11px] text-[#5B6B82]">
-                          <button
-                            type="button"
-                            className="rounded-md p-2 text-[#5B6B82] hover:bg-white hover:text-[#003C79] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79]"
-                            onClick={() => toggleTable(table.name)}
-                            aria-label="Toggle columns"
-                            title={isExpanded ? "Collapse columns" : "Expand columns"}
-                          >
-                            {isExpanded ? "▾" : "▸"}
-                          </button>
                         </div>
                       </div>
                       <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleCopyTableName(table.name)}
-                          className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-transparent text-[#9AA9BE] hover:border-[#E6EEF7] hover:bg-white hover:text-[#003C79] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79]"
-                          aria-label="Copy table name"
-                        >
-                          <svg
-                            viewBox="0 0 24 24"
-                            className="h-4 w-4"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.8"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
+                        <div className="relative group">
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleCopyTableName(table.name);
+                            }}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-transparent text-[#9AA9BE] hover:border-[#E6EEF7] hover:bg-white hover:text-[#003C79] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79]"
+                            aria-label="Copy table name"
                           >
-                            <rect x="9" y="9" width="11" height="11" rx="2" />
-                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                          </svg>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleCopyTable(table.name)}
-                          className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-transparent text-[#9AA9BE] hover:border-[#E6EEF7] hover:bg-white hover:text-[#003C79] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79]"
-                          aria-label="Duplicate table"
-                        >
-                          <svg
-                            viewBox="0 0 24 24"
-                            className="h-4 w-4"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.8"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
+                            <svg
+                              viewBox="0 0 24 24"
+                              className="h-4 w-4"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <rect x="9" y="9" width="11" height="11" rx="2" />
+                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                            </svg>
+                          </button>
+                          <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 rounded-md bg-[#0B1220] px-2 py-1 text-[10px] font-semibold text-white opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
+                            Copy table name
+                          </span>
+                        </div>
+                        <div className="relative group">
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleRenameTable(table.name);
+                            }}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-transparent text-[#9AA9BE] hover:border-[#E6EEF7] hover:bg-white hover:text-[#003C79] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79]"
+                            aria-label="Rename table"
                           >
-                            <rect x="8" y="8" width="12" height="12" rx="2" />
-                            <rect x="4" y="4" width="12" height="12" rx="2" />
-                          </svg>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleRenameTable(table.name)}
-                          className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-transparent text-[#9AA9BE] hover:border-[#E6EEF7] hover:bg-white hover:text-[#003C79] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79]"
-                          aria-label="Rename table"
-                        >
-                          <svg
-                            viewBox="0 0 24 24"
-                            className="h-4 w-4"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.8"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
+                            <svg
+                              viewBox="0 0 24 24"
+                              className="h-4 w-4"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <path d="M12 20h9" />
+                              <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                            </svg>
+                          </button>
+                          <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 rounded-md bg-[#0B1220] px-2 py-1 text-[10px] font-semibold text-white opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
+                            Rename table
+                          </span>
+                        </div>
+                        <div className="relative group">
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleDeleteTable(table.name);
+                            }}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-transparent text-[#C95757] hover:border-[#F7C7C7] hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C95757]"
+                            aria-label="Remove table"
                           >
-                            <path d="M12 20h9" />
-                            <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                          </svg>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteTable(table.name)}
-                          className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-transparent text-[#C95757] hover:border-[#F7C7C7] hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C95757]"
-                          aria-label="Detach table"
-                        >
-                          <svg
-                            viewBox="0 0 24 24"
-                            className="h-4 w-4"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.8"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="M6 6l12 12" />
-                            <path d="M18 6l-12 12" />
-                          </svg>
-                        </button>
+                            <svg
+                              viewBox="0 0 24 24"
+                              className="h-4 w-4"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <path d="M6 6l12 12" />
+                              <path d="M18 6l-12 12" />
+                            </svg>
+                          </button>
+                          <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 rounded-md bg-[#0B1220] px-2 py-1 text-[10px] font-semibold text-white opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
+                            Remove table
+                          </span>
+                        </div>
                       </div>
                       {isExpanded ? (
                         <div className="mt-3 space-y-1">
@@ -1971,12 +1970,41 @@ export function WorkspaceEditor() {
           <div className="flex min-h-0 flex-1 flex-col gap-4">
             <div className="shrink-0 rounded-2xl border border-[#E6EEF7] bg-white p-6 shadow-[0_18px_48px_rgba(11,18,32,0.08)]">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-[#0B1220]">
-                  SQL Editor
-                </p>
+                <div className="flex items-center gap-3">
+                  <p className="text-sm font-semibold text-[#0B1220]">
+                    SQL Editor
+                  </p>
+                  <span
+                    className="inline-flex items-center rounded-full border border-[#BFECE1] bg-[#EAFBF6] px-2 py-0.5 text-[11px] font-semibold text-[#0B6D58]"
+                    title={SQL_DIALECT_TOOLTIP}
+                  >
+                    {SQL_DIALECT_LABEL}
+                  </span>
+                </div>
                 <div className="flex items-center gap-2">
                   <button
-                    className="rounded-lg border border-[#E6EEF7] bg-white px-3 py-1 text-xs font-semibold text-[#003C79] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79]"
+                    type="button"
+                    onClick={runQuery}
+                    disabled={runDisabled || status === "Running"}
+                    aria-disabled={runDisabled || status === "Running"}
+                    title={
+                      runDisabled
+                        ? runDisabledReason ?? "Enter SQL to run"
+                        : "Run SQL"
+                    }
+                    className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79] ${
+                      runDisabled || status === "Running"
+                        ? "border-[#E6EEF7] bg-white text-[#9AA9BE] opacity-60"
+                        : "border-[#003C79] bg-[#003C79] text-white"
+                    }`}
+                  >
+                    {status === "Running" ? (
+                      <span className="h-3 w-3 animate-spin rounded-full border border-white/40 border-t-white" />
+                    ) : null}
+                    {status === "Running" ? "Running…" : "Run"}
+                  </button>
+                  <button
+                    className="rounded-lg border border-[#E6EEF7] bg-white px-3 py-2 text-xs font-semibold text-[#003C79] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79]"
                     onClick={handleSaveClick}
                     disabled={!sql.trim()}
                   >
@@ -1984,7 +2012,7 @@ export function WorkspaceEditor() {
                   </button>
                   <button
                     type="button"
-                    className="rounded-lg border border-[#E6EEF7] bg-white px-3 py-1 text-xs font-semibold text-[#5B6B82] hover:text-[#003C79] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79]"
+                    className="rounded-lg border border-transparent px-3 py-2 text-xs font-semibold text-[#5B6B82] hover:border-[#E6EEF7] hover:bg-white hover:text-[#003C79] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79]"
                     onClick={clearQuery}
                     aria-label="Clear editor"
                     title="Clear editor"
@@ -2054,59 +2082,6 @@ export function WorkspaceEditor() {
                 >
                   + New tab
                 </button>
-                <div className="ml-auto flex items-center gap-2">
-                  {preferredTable ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          insertSqlSnippet(
-                            `SELECT * FROM ${formatSqlIdentifier(
-                              preferredTable
-                            )} LIMIT ${limits.previewLimit};`
-                          )
-                        }
-                        className="rounded-lg border border-[#E6EEF7] bg-white px-2.5 py-1 text-xs font-semibold text-[#003C79] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79]"
-                        title="Insert example"
-                        aria-label="Insert example"
-                      >
-                        Insert example
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          insertSqlSnippet(formatSqlIdentifier(preferredTable))
-                        }
-                        className="rounded-lg border border-[#E6EEF7] bg-white px-2.5 py-1 text-xs font-semibold text-[#003C79] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79]"
-                        title="Insert table name"
-                        aria-label="Insert table name"
-                      >
-                        Insert name
-                      </button>
-                    </>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={runQuery}
-                    disabled={runDisabled || status === "Running"}
-                    aria-disabled={runDisabled || status === "Running"}
-                    title={
-                      runDisabled
-                        ? runDisabledReason ?? "Enter SQL to run"
-                        : "Run SQL"
-                    }
-                    className={`inline-flex items-center gap-2 rounded-lg px-2.5 py-1 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79] ${
-                      runDisabled || status === "Running"
-                        ? "border border-[#E6EEF7] bg-white text-[#9AA9BE] opacity-60"
-                        : "bg-[#003C79] text-white"
-                    }`}
-                  >
-                    {status === "Running" ? (
-                      <span className="h-3 w-3 animate-spin rounded-full border border-white/40 border-t-white" />
-                    ) : null}
-                    {status === "Running" ? "Running…" : "Run"}
-                  </button>
-                </div>
               </div>
               <div className="mt-4 h-[300px] min-h-[240px] overflow-hidden rounded-xl border border-[#E6EEF7] bg-[#F7FAFC]">
                 <MonacoEditor
@@ -2156,26 +2131,41 @@ export function WorkspaceEditor() {
                     : savedQueries.length}
                   )
                 </button>
-                <div className="ml-auto flex items-center gap-3 text-xs text-[#5B6B82]">
-                  {hasRun ? (
-                    <span className={`${rowCountColor} tabular-nums`}>
-                      Showing: {showingLabel}
-                    </span>
-                  ) : (
-                    <span className="text-[#5B6B82]">No results yet</span>
-                  )}
-                  <span className="tabular-nums">
-                    Export: up to {exportCapLabel}
-                  </span>
+                <div className="ml-auto flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-2 rounded-lg border border-[#E6EEF7] bg-white px-3 py-1.5 text-xs font-semibold text-[#003C79] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79] disabled:opacity-50"
+                    onClick={() => setShowExportModal(true)}
+                    disabled={exportDisabled || exporting}
+                    aria-disabled={exportDisabled || exporting}
+                    title={
+                      exportDisabled
+                        ? "Run a query to export results"
+                        : "Export results"
+                    }
+                  >
+                    {exporting ? (
+                      <span className="h-3 w-3 animate-spin rounded-full border border-[#003C79]/40 border-t-[#003C79]" />
+                    ) : null}
+                    {exporting ? "Exporting…" : "Export"}
+                  </button>
                 </div>
+              </div>
+              <div className="shrink-0 px-6 py-3 text-xs text-[#5B6B82]">
+                {hasRun ? (
+                  <span className={`${rowCountColor} tabular-nums`}>
+                    Showing: {showingLabel}
+                  </span>
+                ) : (
+                  <span className="text-[#5B6B82]">No results yet</span>
+                )}
+                <span className="mx-2 text-[#E6EEF7]">•</span>
+                <span className="tabular-nums">
+                  Export limit: {exportCapLabel}
+                </span>
               </div>
 
               <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto px-6 py-4">
-                {showTrialStartedBanner ? (
-                  <Banner tone="success">
-                    Pro trial started — {trialCountdown ?? "..."} left.
-                  </Banner>
-                ) : null}
                 {trial.hasEnded && !dismissTrialEndedBanner ? (
                   <Banner tone="info">
                     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -2289,6 +2279,9 @@ export function WorkspaceEditor() {
                         {tableCount === 0 ? (
                           <>
                             <p>No tables yet. Attach a file to get started.</p>
+                            <p className="text-[11px] text-[#7A8AA1]">
+                              You’ll query them with DuckDB SQL once attached.
+                            </p>
                             <button
                               type="button"
                               onClick={handleAttachClick}
@@ -2299,7 +2292,10 @@ export function WorkspaceEditor() {
                           </>
                         ) : (
                           <>
-                            <p>No results yet. Attach another file to continue.</p>
+                            <p>No results yet. Run a query above to see results here.</p>
+                            <p className="text-[11px] text-[#7A8AA1]">
+                              Tip: You can attach more files if you need additional tables.
+                            </p>
                             <button
                               type="button"
                               onClick={handleAttachClick}
@@ -2420,14 +2416,23 @@ export function WorkspaceEditor() {
               </button>
             </div>
             <div className="mt-3 flex items-center justify-between">
-              <button
-                type="button"
-                onClick={handleDetachAll}
-                disabled={attachedFiles.length === 0}
-                className="rounded-lg border border-[#E6EEF7] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#003C79] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79] disabled:opacity-50"
-              >
-                Detach all
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleAttachClick}
+                  className="rounded-lg border border-[#003C79] bg-[#003C79] px-2.5 py-1 text-[11px] font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79]"
+                >
+                  {attachLabel}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDetachAll}
+                  disabled={attachedFiles.length === 0}
+                  className="rounded-lg border border-[#E6EEF7] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#003C79] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79] disabled:opacity-50"
+                >
+                  Detach all
+                </button>
+              </div>
             </div>
             <input
               type="text"
@@ -2621,7 +2626,7 @@ export function WorkspaceEditor() {
       />
       {copyToastMessage ? (
         <div className="fixed bottom-6 right-6 z-50">
-          <Banner tone="success" variant="toast">
+          <Banner tone="success">
             {copyToastMessage}
           </Banner>
         </div>

@@ -39,12 +39,12 @@ export function ConfirmEmailNotice({ notice, email }: ConfirmEmailNoticeProps) {
   return (
     <Banner tone="info">
       <div className="flex flex-col gap-2">
-        <div className="text-sm font-semibold text-[#0B1220]">
+        <div className="text-sm font-semibold text-[color:var(--text-primary)]">
           Confirm your email
         </div>
-        <p className="text-sm text-[#0B1220]">
+        <p className="text-sm text-[color:var(--text-primary)]">
           {message}{" "}
-          <span className="text-[#5B6B82]">
+          <span className="text-[color:var(--text-secondary)]">
             Check spam/promotions if you don't see it.
           </span>
         </p>
@@ -52,7 +52,7 @@ export function ConfirmEmailNotice({ notice, email }: ConfirmEmailNoticeProps) {
           <button
             type="button"
             onClick={() => router.replace("/auth/sign-in")}
-            className="text-sm font-semibold text-[#003C79] hover:text-[#002f60]"
+            className="text-sm font-semibold text-[color:var(--color-primary)] hover:text-[#002f60]"
           >
             Dismiss
           </button>
