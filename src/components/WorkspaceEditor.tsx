@@ -22,9 +22,6 @@ import { CsvImportModal } from "@/src/components/CsvImportModal";
 import { Banner } from "@/src/components/ui/banner";
 import { logClientError } from "@/src/lib/logger";
 import { usePlan } from "@/src/lib/usePlan";
-import { useTrialCountdown } from "@/src/lib/useTrialCountdown";
-import { formatTrialEndDate } from "@/src/lib/trial";
-import { getUpgradeHref } from "@/src/lib/upgrade";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useConsoleSession } from "@/src/components/ConsoleSessionProvider";
@@ -40,10 +37,8 @@ import { normalizeTableName, sanitizeTableName } from "@/src/lib/tableName";
 import { formatSqlIdentifier } from "@/src/lib/sqlIdentifiers";
 import { type CsvDelimiter } from "@/src/duckdb/csv";
 import type { WorkerProgress } from "@/src/lib/duckdb-worker-types";
-import { getWhyUpgradeBullets } from "@/src/lib/planDisplay";
 import { getLimitText } from "@/src/lib/limitText";
 import { can } from "@/src/billing/plan";
-import { getUpgradeFix } from "@/src/billing/reasons";
 import { EXAMPLE_QUERIES, getExampleQueryById } from "@/src/lib/exampleQueries";
 import { SQL_DIALECT_LABEL, SQL_DIALECT_TOOLTIP } from "@/src/lib/sqlDialect";
 
@@ -94,7 +89,7 @@ function toAttachedSourceEntry(
 }
 
 export function WorkspaceEditor() {
-  const { plan, entitlements, trial, profile } = usePlan();
+  const { plan, entitlements, profile } = usePlan();
   const router = useRouter();
   const searchParams = useSearchParams();
   const supportsParquet = FeatureFlags.ENABLE_PARQUET;
@@ -134,54 +129,9 @@ export function WorkspaceEditor() {
   const limits = entitlements;
   const limitText = useMemo(() => getLimitText(plan), [plan]);
   const proLimitText = useMemo(() => getLimitText("pro"), []);
-  const trialCountdown = useTrialCountdown(
-    trial.serverNow,
-    trial.endsAt,
-    trial.active,
-    trial.startedAt
-  );
-  const trialEndsAtLabel = useMemo(
-    () => (trial.active ? formatTrialEndDate(trial.endsAt) : null),
-    [trial.active, trial.endsAt]
-  );
-  const trialEndsAtMs = useMemo(
-    () => (trial.endsAt ? new Date(trial.endsAt).getTime() : null),
-    [trial.endsAt]
-  );
-  const trialRemainingMs = useMemo(() => {
-    if (!trial.active || !trialEndsAtMs || !trial.serverNow) {
-      return null;
-    }
-    const nowMs = new Date(trial.serverNow).getTime();
-    return Math.max(0, trialEndsAtMs - nowMs);
-  }, [trial.active, trialEndsAtMs, trial.serverNow]);
-  const trialEndingSoon = useMemo(() => {
-    if (!trialRemainingMs || trialRemainingMs <= 0) {
-      return null;
-    }
-    const hours = trialRemainingMs / (60 * 60 * 1000);
-    if (hours <= 6) {
-      return "urgent";
-    }
-    if (hours <= 48) {
-      return "soon";
-    }
-    return null;
-  }, [trialRemainingMs]);
-  const upgradeTitle = trial.hasEnded ? "Upgrade to Pro" : "Free limit reached";
-  const trialUpgradeNote = useMemo(() => {
-    if (trial.active && trialEndsAtLabel) {
-      return `You're in a Pro trial—upgrade to keep Pro limits after ${trialEndsAtLabel}.`;
-    }
-    if (trial.hasEnded) {
-      return "Your trial ended—Pro increases export and file limits.";
-    }
-    return "Upgrade to Pro for higher limits.";
-  }, [trial.active, trial.hasEnded, trialEndsAtLabel]);
-  const upgradeHref = useMemo(
-    () => getUpgradeHref(Boolean(profile)),
-    [profile]
-  );
+  const upgradeTitle = "Billing coming soon";
+  const trialUpgradeNote =
+    "Payments are being enabled. You can use QuackNinja free in the meantime.";
   const duckdb = useMemo(() => getDuckDBClient(), []);
   const activeTab = useMemo(
     () =>
@@ -316,10 +266,10 @@ export function WorkspaceEditor() {
     showUpgrade: boolean;
     bulletsLabel?: string;
   }>({
-    title: "Upgrade to Pro",
+    title: "Billing coming soon",
     description:
-      `Pro supports files up to ${proLimitText.maxSingleFileSize}, total sessions up to ${proLimitText.maxSessionSize}, previews up to ${proLimitText.previewRows} rows, and exports up to ${proLimitText.exportRows} rows.`,
-    bullets: getWhyUpgradeBullets(),
+      "Payments are being enabled. You can use QuackNinja free in the meantime.",
+    bullets: [],
     showUpgrade: true,
     bulletsLabel: undefined,
   });
@@ -333,8 +283,6 @@ export function WorkspaceEditor() {
   const [importProgress, setImportProgress] = useState<WorkerProgress | null>(
     null
   );
-  const [dismissTrialSoonBanner, setDismissTrialSoonBanner] = useState(false);
-  const [dismissTrialEndedBanner, setDismissTrialEndedBanner] = useState(false);
   const copyToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const persistedAttachmentsRef = useRef<AttachedFileMeta[]>(persistedAttachments);
@@ -734,10 +682,8 @@ export function WorkspaceEditor() {
         } else {
           setUpgradeContent({
             title: upgradeTitle,
-            description: trial.hasEnded
-              ? trialUpgradeNote
-              : "You're at the Free limit for file size. Upgrade for larger files and exports.",
-            bullets: getWhyUpgradeBullets("file"),
+            description: trialUpgradeNote,
+            bullets: [],
             showUpgrade: true,
           });
         }
@@ -767,10 +713,8 @@ export function WorkspaceEditor() {
         } else {
           setUpgradeContent({
             title: upgradeTitle,
-            description: trial.hasEnded
-              ? trialUpgradeNote
-              : "You're at the Free limit for total session size. Upgrade for larger files and exports.",
-            bullets: getWhyUpgradeBullets("session"),
+            description: trialUpgradeNote,
+            bullets: [],
             showUpgrade: true,
           });
         }
@@ -970,7 +914,6 @@ export function WorkspaceEditor() {
       supportsExcel,
       supportsParquet,
       totalAttachedBytes,
-      trial.hasEnded,
       trialUpgradeNote,
       upgradeTitle,
     ]
@@ -1228,17 +1171,6 @@ export function WorkspaceEditor() {
   }, [attachedFiles, attachmentsHydrated, consoleKey, setPersistedAttachments]);
 
 
-  useEffect(() => {
-    if (!trial.hasEnded) {
-      return;
-    }
-    const flag = typeof window !== "undefined"
-      ? window.localStorage.getItem("filesql-trial-ended-dismissed")
-      : null;
-    if (flag) {
-      setDismissTrialEndedBanner(true);
-    }
-  }, [trial.hasEnded]);
 
   const runQuery = async () => {
     if (importing) {
@@ -1326,10 +1258,8 @@ export function WorkspaceEditor() {
     if (saveGate !== true) {
       setUpgradeContent({
         title: upgradeTitle,
-        description: trial.hasEnded
-          ? trialUpgradeNote
-          : "You're at the Free limit for saved queries. Upgrade for more saved queries.",
-        bullets: getWhyUpgradeBullets("savedQueries"),
+        description: trialUpgradeNote,
+        bullets: [],
         showUpgrade: true,
       });
       setShowUpgradeModal(true);
@@ -1516,13 +1446,9 @@ export function WorkspaceEditor() {
       const splitGate = can("split_export", { plan });
       if (splitGate !== true) {
         setUpgradeContent({
-          title: trial.hasEnded ? upgradeTitle : "Split export unavailable",
-          description: trial.hasEnded
-            ? trialUpgradeNote
-            : `Split exports are a Pro feature. ${getUpgradeFix(
-                splitGate.reason
-              )}`,
-          bullets: getWhyUpgradeBullets("export"),
+          title: upgradeTitle,
+          description: trialUpgradeNote,
+          bullets: [],
           showUpgrade: true,
         });
         setShowUpgradeModal(true);
@@ -1656,8 +1582,7 @@ export function WorkspaceEditor() {
       <WorkspaceTopBar
         title="Console"
         onOpenSchema={() => setShowSchemaDrawer(true)}
-        trialLabel={trial.active ? trialCountdown : null}
-        trialEndsAtLabel={trial.active ? trialEndsAtLabel : null}
+        statusLabel="Pro (Early Access)"
       />
 
       <div className="grid min-h-0 grid-cols-[320px_1fr] gap-0 overflow-hidden md:grid-cols-[320px_1fr]">
@@ -1698,14 +1623,14 @@ export function WorkspaceEditor() {
             onChange={(event) => setSchemaFilter(event.target.value)}
             aria-label="Search tables"
           />
-          <div className="mt-4 rounded-lg border border-[#E6EEF7] bg-white px-3 py-2 text-[11px] text-[#5B6B82]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#5B6B82]">
-              Memory estimate
-            </p>
-            <div className="mt-2 space-y-1 text-[11px] text-[#5B6B82]">
-              <p>In use: {formatBytes(totalAttachedBytes)}</p>
-              <p>Remaining: {formatBytes(sessionRemainingBytes)}</p>
-            </div>
+            <div className="mt-4 rounded-lg border border-[#E6EEF7] bg-white px-3 py-2 text-[11px] text-[#5B6B82]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#5B6B82]">
+                Memory estimate
+              </p>
+              <div className="mt-2 space-y-1 text-[11px] text-[#5B6B82]">
+                <p>In use: {formatBytes(totalAttachedBytes)}</p>
+                <p>Remaining: {formatBytes(sessionRemainingBytes)}</p>
+              </div>
             <div className="mt-2 h-2 rounded-full bg-[#E6EEF7]">
               <div
                 className="h-2 rounded-full bg-[#09CEA4]"
@@ -1720,7 +1645,7 @@ export function WorkspaceEditor() {
               </p>
             ) : null}
           </div>
-          <div className="mt-8 flex h-[calc(100vh-320px)] flex-col gap-4 overflow-y-auto pr-2 text-xs text-[#5B6B82]">
+          <div className="mt-10 flex h-[calc(100vh-320px)] flex-col gap-4 overflow-y-auto pr-2 text-xs text-[#5B6B82]">
             {showRestoreBanner ? (
               <div className="rounded-lg border border-[#E6EEF7] bg-[#F7FAFC] px-3 py-2 text-[11px] text-[#5B6B82]">
                 <p className="text-[11px] font-semibold text-[#0B1220]">
@@ -1992,7 +1917,7 @@ export function WorkspaceEditor() {
                         ? runDisabledReason ?? "Enter SQL to run"
                         : "Run SQL"
                     }
-                    className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79] ${
+                    className={`inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79] ${
                       runDisabled || status === "Running"
                         ? "border-[#E6EEF7] bg-white text-[#9AA9BE] opacity-60"
                         : "border-[#003C79] bg-[#003C79] text-white"
@@ -2004,7 +1929,7 @@ export function WorkspaceEditor() {
                     {status === "Running" ? "Running…" : "Run"}
                   </button>
                   <button
-                    className="rounded-lg border border-[#E6EEF7] bg-white px-3 py-2 text-xs font-semibold text-[#003C79] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79]"
+                    className="h-9 rounded-lg border border-[#E6EEF7] bg-white px-3 text-xs font-semibold text-[#003C79] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79]"
                     onClick={handleSaveClick}
                     disabled={!sql.trim()}
                   >
@@ -2012,7 +1937,7 @@ export function WorkspaceEditor() {
                   </button>
                   <button
                     type="button"
-                    className="rounded-lg border border-transparent px-3 py-2 text-xs font-semibold text-[#5B6B82] hover:border-[#E6EEF7] hover:bg-white hover:text-[#003C79] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79]"
+                    className="h-9 rounded-lg border border-transparent px-3 text-xs font-semibold text-[#5B6B82] hover:border-[#E6EEF7] hover:bg-white hover:text-[#003C79] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79]"
                     onClick={clearQuery}
                     aria-label="Clear editor"
                     title="Clear editor"
@@ -2166,54 +2091,6 @@ export function WorkspaceEditor() {
               </div>
 
               <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto px-6 py-4">
-                {trial.hasEnded && !dismissTrialEndedBanner ? (
-                  <Banner tone="info">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span>Trial ended — you’re on Free now.</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDismissTrialEndedBanner(true);
-                          if (typeof window !== "undefined") {
-                            window.localStorage.setItem(
-                              "filesql-trial-ended-dismissed",
-                              "true"
-                            );
-                          }
-                        }}
-                        className="text-xs font-semibold text-[#003C79]"
-                      >
-                        Dismiss
-                      </button>
-                    </div>
-                  </Banner>
-                ) : null}
-                {trial.active && trialEndingSoon && !dismissTrialSoonBanner ? (
-                  <Banner tone={trialEndingSoon === "urgent" ? "warning" : "info"}>
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span>
-                        {trialEndingSoon === "urgent"
-                          ? "Your trial ends in a few hours. Upgrade to keep bigger exports."
-                          : "Your trial ends soon. Upgrade to keep bigger exports."}
-                      </span>
-                      <div className="flex items-center gap-3">
-                        <Link
-                          href={upgradeHref}
-                          className="text-xs font-semibold text-[#003C79]"
-                        >
-                          Upgrade
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={() => setDismissTrialSoonBanner(true)}
-                          className="text-xs font-semibold text-[#003C79]"
-                        >
-                          Dismiss
-                        </button>
-                      </div>
-                    </div>
-                  </Banner>
-                ) : null}
                 {error ? (
                   stabilityNotice ? (
                     <div className="rounded-xl border border-[#F4D9A6] bg-[#FFF7E6] px-4 py-3 text-xs text-[#7A5B12]">
@@ -2446,7 +2323,6 @@ export function WorkspaceEditor() {
                 Memory estimate
               </p>
               <div className="mt-2 space-y-1 text-[11px] text-[#5B6B82]">
-                <p>Session budget: {formatBytes(sessionBudgetBytes)}</p>
                 <p>In use: {formatBytes(totalAttachedBytes)}</p>
                 <p>Remaining: {formatBytes(sessionRemainingBytes)}</p>
               </div>
@@ -2464,7 +2340,7 @@ export function WorkspaceEditor() {
                 </p>
               ) : null}
             </div>
-            <div className="mt-6 flex h-[calc(100vh-260px)] flex-col gap-4 overflow-y-auto pr-2 text-xs text-[#5B6B82]">
+            <div className="mt-8 flex h-[calc(100vh-260px)] flex-col gap-4 overflow-y-auto pr-2 text-xs text-[#5B6B82]">
               {schema.length === 0 && missingAttachments.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-[#E6EEF7] bg-[#F7FAFC] px-3 py-4 text-center text-xs text-[#5B6B82]">
                 <p>Attach a {attachTypesLabel} file to get started.</p>

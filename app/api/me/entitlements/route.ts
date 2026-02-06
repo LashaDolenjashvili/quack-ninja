@@ -3,6 +3,7 @@ import { getSupabaseAdmin, supabaseAdminConfigured } from "@/src/lib/supabaseSer
 import { resolveEntitlements } from "@/src/billing/entitlements";
 import { getEntitlements } from "@/src/lib/entitlements";
 import { TRIAL_ENABLED_SERVER, TRIAL_DAYS, getTrialWindow } from "@/src/lib/trial";
+import { BILLING_COMING_SOON } from "@/src/config/plans";
 
 export async function GET(request: Request) {
   const now = new Date();
@@ -55,7 +56,9 @@ export async function GET(request: Request) {
     .select("trial_enabled")
     .eq("id", 1)
     .maybeSingle();
-  const trialEnabled = config?.trial_enabled ?? TRIAL_ENABLED_SERVER;
+  const trialEnabled = BILLING_COMING_SOON
+    ? false
+    : config?.trial_enabled ?? TRIAL_ENABLED_SERVER;
 
   let { data: profile } = await supabase
     .from("profiles")

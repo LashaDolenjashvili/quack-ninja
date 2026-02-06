@@ -11,15 +11,11 @@ import { supabase, supabaseConfigured } from "@/src/lib/supabaseClient";
 type SidebarProps = {
   userEmail?: string | null;
   planLabel?: string;
-  planTier?: "free" | "pro";
-  upgradeHref?: string;
 };
 
 export function Sidebar({
   userEmail,
   planLabel = "Free",
-  planTier = "free",
-  upgradeHref,
 }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -28,7 +24,6 @@ export function Sidebar({
   const isConsole = pathname.startsWith("/app/console") || pathname === "/app";
   const isDocs = pathname.startsWith("/docs");
   const isSettings = pathname.startsWith("/app/settings");
-  const isPro = planTier === "pro";
 
   const handleLogout = async () => {
     if (supabaseConfigured) {
@@ -120,36 +115,18 @@ export function Sidebar({
 
           <div className="rounded-2xl border border-white/20 bg-white/10 p-4">
             <p className="text-sm font-semibold text-white">
-            {isPro ? "Current plan: Pro" : "Upgrade to Pro"}
+              Billing coming soon
             </p>
             <p className="mt-2 text-xs text-white/70">
-              {isPro
-                ? "You have higher limits for files, exports, and saved queries."
-                : "Bigger files, bigger exports, and unlimited saved queries."}
+              Payments are being enabled. You can use QuackNinja free in the meantime.
             </p>
-            {isPro ? (
-              <button
-                className="mt-4 w-full cursor-not-allowed rounded-lg bg-white/20 px-3 py-2 text-xs font-semibold text-white/70"
-                type="button"
-                disabled
-              >
-                Billing coming soon
-              </button>
-            ) : upgradeHref ? (
-              <Link
-                href={upgradeHref}
-                className="mt-4 block w-full rounded-lg bg-[#09CEA4] px-3 py-2 text-center text-xs font-semibold text-[#003C79]"
-              >
-                Upgrade
-              </Link>
-            ) : (
-              <button
-                className="mt-4 w-full rounded-lg bg-[#09CEA4] px-3 py-2 text-xs font-semibold text-[#003C79]"
-                type="button"
-              >
-                Upgrade
-              </button>
-            )}
+            <button
+              className="mt-4 w-full cursor-not-allowed rounded-lg bg-white/20 px-3 py-2 text-xs font-semibold text-white/70"
+              type="button"
+              disabled
+            >
+              Pro — coming soon
+            </button>
           </div>
         </div>
 

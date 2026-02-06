@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin, supabaseAdminConfigured } from "@/src/lib/supabaseServer";
 import { TRIAL_ENABLED_SERVER, getTrialWindow } from "@/src/lib/trial";
+import { BILLING_COMING_SOON } from "@/src/config/plans";
 
 export async function POST(request: Request) {
   if (!supabaseAdminConfigured) {
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
     .eq("id", authData.user.id)
     .maybeSingle();
 
-  if (!TRIAL_ENABLED_SERVER) {
+  if (!TRIAL_ENABLED_SERVER || BILLING_COMING_SOON) {
     if (!profile) {
       await supabase.from("profiles").insert({
         id: authData.user.id,

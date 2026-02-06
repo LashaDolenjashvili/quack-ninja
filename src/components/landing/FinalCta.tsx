@@ -21,8 +21,7 @@ export function FinalCta() {
                 Get your first answer in under 2 minutes.
               </h2>
               <p className="max-w-2xl text-base text-slate-600 md:text-lg">
-                Start the 7-day Pro trial (no card) or open the console and try an
-                example.
+                Billing is coming soon. You can use QuackNinja free in the meantime.
               </p>
             </div>
             <AuthAwareCta
