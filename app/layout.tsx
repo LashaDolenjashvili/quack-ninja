@@ -23,11 +23,11 @@ export const metadata: Metadata = {
     title: "QuackNinja",
     description:
       "Open exports in your browser, get answers fast, and share a clean CSV in minutes.",
-    images: ["/api/og"],
+    images: ["/brand/quack-ninja.svg"],
   },
   twitter: {
     card: "summary_large_image",
-    images: ["/api/og"],
+    images: ["/brand/quack-ninja.svg"],
   },
   icons: {
     icon: "/favicon.ico",

@@ -7,32 +7,7 @@ const size = {
   height: 630,
 };
 
-function arrayBufferToBase64(buffer: ArrayBuffer) {
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  for (const byte of bytes) {
-    binary += String.fromCharCode(byte);
-  }
-  return btoa(binary);
-}
-
 export async function GET() {
-  const [wordmarkBuffer, markSvg] = await Promise.all([
-    fetch(
-      new URL(
-        "../../../public/brand/quackninja-wordmark-white.png",
-        import.meta.url
-      )
-    ).then((res) => res.arrayBuffer()),
-    fetch(
-      new URL("../../../public/brand/quackninja-mark.svg", import.meta.url)
-    ).then((res) => res.text()),
-  ]);
-
-  const wordmarkBase64 = arrayBufferToBase64(wordmarkBuffer);
-  const wordmarkUrl = `data:image/png;base64,${wordmarkBase64}`;
-  const markUrl = `data:image/svg+xml;utf8,${encodeURIComponent(markSvg)}`;
-
   return new ImageResponse(
     (
       <div
@@ -76,25 +51,37 @@ export async function GET() {
         <div style={{ display: "flex", gap: "48px", alignItems: "center" }}>
           <div
             style={{
-              width: "300px",
-              height: "300px",
+              width: "260px",
+              height: "260px",
+              borderRadius: "999px",
+              background:
+                "radial-gradient(circle at 35% 35%, rgba(9,206,164,0.95), rgba(9,206,164,0.2) 60%, rgba(0,0,0,0) 100%)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               filter: "drop-shadow(0 24px 40px rgba(0,0,0,0.35))",
             }}
           >
-            <img src={markUrl} width={300} height={300} alt="QuackNinja mark" />
+            <div
+              style={{
+                width: "140px",
+                height: "140px",
+                borderRadius: "36px",
+                background: "rgba(255,255,255,0.12)",
+                border: "1px solid rgba(255,255,255,0.25)",
+              }}
+            />
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-              <img
-                src={wordmarkUrl}
-                width={260}
-                height={48}
-                alt="QuackNinja"
-              />
+            <div
+              style={{
+                fontSize: "40px",
+                fontWeight: 700,
+                letterSpacing: "-0.02em",
+              }}
+            >
+              QuackNinja
             </div>
             <div style={{ fontSize: "64px", fontWeight: 700, lineHeight: 1.05 }}>
               SQL on CSV / Excel / Parquet
