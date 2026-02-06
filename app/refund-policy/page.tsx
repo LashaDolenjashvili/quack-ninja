@@ -7,6 +7,9 @@ import { LegalCallout } from "@/src/components/legal/LegalCallout";
 export const metadata: Metadata = {
   title: "Refund Policy • QuackNinja",
   description: "Refund Policy for QuackNinja subscriptions.",
+  alternates: {
+    canonical: "https://www.quackninja.com/refund-policy",
+  },
 };
 
 export default function RefundPolicyPage() {

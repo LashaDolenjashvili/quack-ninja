@@ -13,6 +13,7 @@ import { Card } from "@/src/components/ui/Card";
 import { SectionHeader } from "@/src/components/Marketing/SectionHeader";
 import { Footer } from "@/src/components/layout/Footer";
 import { SQL_DIALECT_DESCRIPTION, SQL_DIALECT_LABEL } from "@/src/lib/sqlDialect";
+import type { Metadata } from "next";
 
 const faqs = [
   {
@@ -70,10 +71,57 @@ const faqs = [
   },
 ];
 
+export const metadata: Metadata = {
+  title: "SQL on CSV, Excel & Parquet",
+  description:
+    "Run SQL on CSV, Excel, and Parquet locally in your browser. Get answers fast and export clean results.",
+  alternates: {
+    canonical: "https://www.quackninja.com/",
+  },
+};
+
 
 export default function MarketingPage() {
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqs.map((item) => ({
+      "@type": "Question",
+      name: item.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: item.answer,
+      },
+    })),
+  };
+
+  const softwareJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "QuackNinja",
+    applicationCategory: "BusinessApplication",
+    operatingSystem: "Web",
+    description:
+      "Run SQL on CSV, Excel, and Parquet locally in your browser. Get answers fast and export clean results.",
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "USD",
+    },
+  };
+
   return (
     <div className="flex min-h-screen flex-col bg-[color:var(--color-surface)] text-[#0B1220]">
+      <script
+        type="application/ld+json"
+        // eslint-disable-next-line react/no-danger
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        // eslint-disable-next-line react/no-danger
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
       <main className="flex-1">
       <div className="relative overflow-hidden bg-gradient-to-br from-[#003C79] via-[#00356b] to-[#001f40] text-white">
         <div className="absolute left-[-120px] top-[-80px] h-72 w-72 rounded-full bg-[#09CEA4]/30 blur-3xl" />

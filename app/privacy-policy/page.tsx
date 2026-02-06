@@ -8,6 +8,9 @@ export const metadata: Metadata = {
   title: "Privacy Policy • QuackNinja",
   description:
     "Privacy Policy for QuackNinja, including account data and local files.",
+  alternates: {
+    canonical: "https://www.quackninja.com/privacy-policy",
+  },
 };
 
 export default function PrivacyPolicyPage() {
