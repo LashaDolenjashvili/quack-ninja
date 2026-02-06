@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo } from "react";
+import Link from "next/link";
 import { Button } from "@/src/components/ui/button";
+import { buttonClassName } from "@/src/components/ui/button";
 import { Card } from "@/src/components/ui/Card";
 import { Badge } from "@/src/components/ui/Badge";
 import { Section } from "@/src/components/ui/Section";
@@ -10,6 +12,8 @@ import { SectionHeader } from "@/src/components/Marketing/SectionHeader";
 import { getPlanDisplay } from "@/src/lib/planDisplay";
 import { usePlan } from "@/src/lib/usePlan";
 import { BillingComingSoonNotice } from "@/src/components/BillingComingSoonNotice";
+import { useAuth } from "@/src/components/auth/AuthProvider";
+import { OpenConsoleButton } from "@/src/components/Marketing/OpenConsoleButton";
 
 const pricing = {
   monthly: {
@@ -29,6 +33,7 @@ export function PricingSection() {
   const { plan, loading } = usePlan();
   const planReady = !loading;
   const isPro = planReady && plan === "pro";
+  const { user, loading: authLoading } = useAuth();
   const proBadge = loading ? "Checking plan..." : isPro ? "Current plan" : "Most popular";
   const proCtaLabel = "Pro — coming soon";
   const freePlan = useMemo(() => getPlanDisplay("free"), []);
@@ -62,14 +67,26 @@ export function PricingSection() {
               <li>Export: {freePlan.display.exportRows} rows</li>
               <li>Saved queries: {freePlan.display.savedQueries}</li>
             </ul>
-            <Button
-              type="button"
-              variant="outline"
-              fullWidth
-              className="mt-8"
-            >
-              Get started
-            </Button>
+            <div className="mt-8">
+              {authLoading ? (
+                <button
+                  type="button"
+                  disabled
+                  className={buttonClassName({ variant: "outline", fullWidth: true })}
+                >
+                  Get started
+                </button>
+              ) : user ? (
+                <OpenConsoleButton className="w-full" />
+              ) : (
+                <Link
+                  href="/auth/sign-up"
+                  className={buttonClassName({ variant: "outline", fullWidth: true })}
+                >
+                  Get started
+                </Link>
+              )}
+            </div>
             <p className="mt-3 text-xs text-[#5B6B82]">
               Best for trying small exports. Upgrade for share-ready outputs.
             </p>
