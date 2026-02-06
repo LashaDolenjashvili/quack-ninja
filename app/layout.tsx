@@ -12,14 +12,22 @@ const quicksand = Quicksand({
 });
 
 export const metadata: Metadata = {
-  title: "QuackNinja",
+  metadataBase: new URL("https://www.quackninja.com"),
+  title: {
+    default: "QuackNinja",
+    template: "%s — QuackNinja",
+  },
   description:
-    "Open exports in your browser, get answers fast, and share a clean CSV in minutes.",
+    "Run SQL on CSV, Excel, and Parquet locally in your browser. Get answers fast and export clean results.",
   openGraph: {
     title: "QuackNinja",
     description:
       "Open exports in your browser, get answers fast, and share a clean CSV in minutes.",
-    images: ["/brand/quackninja-wordmark.png"],
+    images: ["/brand/quack-ninja.svg"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    images: ["/brand/quack-ninja.svg"],
   },
   icons: {
     icon: "/favicon.ico",

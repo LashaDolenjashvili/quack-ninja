@@ -7,6 +7,9 @@ export const metadata: Metadata = {
   title: "Pricing • QuackNinja",
   description:
     "Simple plans that scale with your data. Start free and upgrade for bigger exports.",
+  alternates: {
+    canonical: "https://www.quackninja.com/pricing",
+  },
 };
 
 export default function PricingPage() {

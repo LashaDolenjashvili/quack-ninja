@@ -8,6 +8,9 @@ export const metadata: Metadata = {
   title: "Terms and Conditions • QuackNinja",
   description:
     "Terms and Conditions for QuackNinja, including service details and payments.",
+  alternates: {
+    canonical: "https://www.quackninja.com/terms-and-conditions",
+  },
 };
 
 export default function TermsAndConditionsPage() {
