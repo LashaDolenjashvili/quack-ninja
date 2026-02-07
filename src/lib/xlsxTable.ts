@@ -1,5 +1,41 @@
 export type XlsxCell = string | number | boolean | null | Date;
 
+function hasCellValue(cell: XlsxCell | undefined) {
+  if (cell === null || cell === undefined) {
+    return false;
+  }
+  if (typeof cell === "string") {
+    return cell.trim().length > 0;
+  }
+  return true;
+}
+
+export function getMeaningfulColumnCount(rows: XlsxCell[][]) {
+  let maxIndex = -1;
+  for (const row of rows) {
+    for (let index = row.length - 1; index >= 0; index -= 1) {
+      if (hasCellValue(row[index])) {
+        if (index > maxIndex) {
+          maxIndex = index;
+        }
+        break;
+      }
+    }
+  }
+  return maxIndex + 1;
+}
+
+export function trimTrailingEmptyColumns(rows: XlsxCell[][]) {
+  const columnCount = getMeaningfulColumnCount(rows);
+  if (columnCount <= 0) {
+    return { rows: [], columnCount: 0 };
+  }
+  const trimmedRows = rows.map((row) =>
+    row.length > columnCount ? row.slice(0, columnCount) : row
+  );
+  return { rows: trimmedRows, columnCount };
+}
+
 export function normalizeHeaders(headers: string[]) {
   const seen = new Map<string, number>();
   return headers.map((header, index) => {

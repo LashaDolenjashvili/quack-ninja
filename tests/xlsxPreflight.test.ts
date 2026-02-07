@@ -3,6 +3,7 @@ import { test } from "node:test";
 import {
   XLSX_FAST_MODE_THRESHOLD_BYTES,
   XLSX_HARD_LIMIT_BYTES,
+  XLSX_MAX_BYTES_BY_PLAN,
   getXlsxPreflight,
 } from "../src/lib/xlsxImportConfig";
 
@@ -17,7 +18,7 @@ test("xlsx preflight enables fast mode above threshold", () => {
 });
 
 test("xlsx preflight keeps normal mode for small files", () => {
-  const result = getXlsxPreflight(XLSX_FAST_MODE_THRESHOLD_BYTES - 1, "free");
+  const result = getXlsxPreflight(XLSX_MAX_BYTES_BY_PLAN.free - 1, "free");
   assert.equal(result.mode, "normal");
 });
 

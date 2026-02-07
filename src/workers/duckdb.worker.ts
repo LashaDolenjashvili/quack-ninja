@@ -1,12 +1,13 @@
 /// <reference lib="webworker" />
 
 import * as duckdb from "@duckdb/duckdb-wasm";
+import * as arrow from "apache-arrow";
 import * as XLSX from "xlsx";
 import { localDuckDbBundles } from "@/src/duckdb/bundles";
 import { resolveCsvDelimiter } from "@/src/duckdb/csv";
 import { sanitizeFileName } from "@/src/lib/sanitize";
 import { buildColumnsAndRows } from "@/src/lib/tabular/headers";
-import type { XlsxCell } from "@/src/lib/xlsxTable";
+import { trimTrailingEmptyColumns, type XlsxCell } from "@/src/lib/xlsxTable";
 import type {
   AttachedTable,
   CopyTablePayload,
@@ -40,6 +41,8 @@ let db: duckdb.AsyncDuckDB | null = null;
 const connections = new Map<string, duckdb.AsyncDuckDBConnection>();
 
 let BASE_URL: string | null = null;
+const XLSX_MAX_IMPORT_COLUMNS = 2048;
+const XLSX_MAX_IMPORT_CELLS = 10_000_000;
 
 function abs(pathname: string) {
   if (/^(https?:|blob:|data:)/.test(pathname)) return pathname;
@@ -133,6 +136,57 @@ function schemaName(workspaceId: string) {
 
 function quoteIdent(value: string) {
   return `"${value.replace(/"/g, "\"\"")}"`;
+}
+
+function toArrowText(value: XlsxCell) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+  return String(value);
+}
+
+function getInsertBatchSize(columnCount: number) {
+  const targetCells = 120_000;
+  const dynamicBatch = Math.floor(targetCells / Math.max(1, columnCount));
+  return Math.max(10, Math.min(2_000, dynamicBatch));
+}
+
+function buildArrowBatchTable(columns: string[], rows: XlsxCell[][]) {
+  const arrays: Record<string, (string | null)[]> = {};
+  for (let columnIndex = 0; columnIndex < columns.length; columnIndex += 1) {
+    const columnName = columns[columnIndex];
+    const values = new Array<string | null>(rows.length);
+    for (let rowIndex = 0; rowIndex < rows.length; rowIndex += 1) {
+      values[rowIndex] = toArrowText(rows[rowIndex]?.[columnIndex] ?? null);
+    }
+    arrays[columnName] = values;
+  }
+  return arrow.tableFromArrays(arrays);
+}
+
+async function insertRowsAsArrowBatches(
+  conn: duckdb.AsyncDuckDBConnection,
+  tableName: string,
+  columns: string[],
+  rows: XlsxCell[][],
+  onBatchInserted?: (current: number, total: number) => void
+) {
+  if (rows.length === 0) {
+    return;
+  }
+  const batchSize = getInsertBatchSize(columns.length);
+  for (let i = 0; i < rows.length; i += batchSize) {
+    const batch = rows.slice(i, i + batchSize);
+    const table = buildArrowBatchTable(columns, batch);
+    await conn.insertArrowTable(table, {
+      name: tableName,
+      create: false,
+    });
+    onBatchInserted?.(Math.min(i + batch.length, rows.length), rows.length);
+  }
 }
 
 async function importCsvLegacy(
@@ -320,11 +374,15 @@ function inferColumnTypes(
   columns: string[]
 ): string[] {
   const stats = columns.map(() => ({
-    hasValue: false,
-    isInteger: true,
-    isFloat: true,
-    isDate: true,
-    isTimestamp: true,
+    nonEmptyCount: 0,
+    integerCount: 0,
+    floatCount: 0,
+    dateCount: 0,
+    timestampCount: 0,
+    epochSecondsCount: 0,
+    epochMillisCount: 0,
+    epochMicrosCount: 0,
+    leadingZeroNumericCount: 0,
   }));
 
   for (const row of rows) {
@@ -337,30 +395,150 @@ function inferColumnTypes(
       }
       const cell = text;
       const entry = stats[i];
-      entry.hasValue = true;
-      if (!isIntegerValue(cell)) entry.isInteger = false;
-      if (!isFloatValue(cell)) entry.isFloat = false;
-      if (!isDateValue(cell)) entry.isDate = false;
-      if (!isTimestampValue(cell)) entry.isTimestamp = false;
+      entry.nonEmptyCount += 1;
+      if (isIntegerValue(cell)) entry.integerCount += 1;
+      if (isFloatValue(cell)) entry.floatCount += 1;
+      if (isDateValue(cell)) entry.dateCount += 1;
+      if (isTimestampValue(cell)) entry.timestampCount += 1;
+      if (isEpochSecondsValue(cell)) entry.epochSecondsCount += 1;
+      if (isEpochMillisValue(cell)) entry.epochMillisCount += 1;
+      if (isEpochMicrosValue(cell)) entry.epochMicrosCount += 1;
+      if (hasLeadingZeroNumeric(cell)) entry.leadingZeroNumericCount += 1;
     }
   }
 
-  return stats.map((entry) => {
-    if (!entry.hasValue) return "VARCHAR";
-    if (entry.isInteger) return "BIGINT";
-    if (entry.isFloat) return "DOUBLE";
-    if (entry.isTimestamp) return "TIMESTAMP";
-    if (entry.isDate) return "DATE";
+  return stats.map((entry, index) => {
+    if (entry.nonEmptyCount === 0) return "VARCHAR";
+    const minNonEmpty = Math.max(3, Math.min(20, Math.ceil(rows.length * 0.2)));
+    if (entry.nonEmptyCount < minNonEmpty) return "VARCHAR";
+    const integerRatio = entry.integerCount / entry.nonEmptyCount;
+    const floatRatio = entry.floatCount / entry.nonEmptyCount;
+    const timestampRatio = entry.timestampCount / entry.nonEmptyCount;
+    const dateRatio = entry.dateCount / entry.nonEmptyCount;
+    const epochRatio =
+      Math.max(
+        entry.epochSecondsCount,
+        entry.epochMillisCount,
+        entry.epochMicrosCount
+      ) / entry.nonEmptyCount;
+    const numericConfidence = entry.nonEmptyCount < 100 ? 0.95 : 0.995;
+    const dateConfidence = entry.nonEmptyCount < 100 ? 0.95 : 0.98;
+    const likelyId = isLikelyIdentifierColumn(columns[index]);
+    const likelyDateTime = isLikelyDateTimeColumn(columns[index]);
+    const idRisk = likelyId && entry.leadingZeroNumericCount > 0;
+    if (likelyDateTime && epochRatio >= dateConfidence) return "TIMESTAMP";
+    if (timestampRatio >= dateConfidence) return "TIMESTAMP";
+    if (dateRatio >= dateConfidence) return "DATE";
+    if (!idRisk && integerRatio >= numericConfidence) return "BIGINT";
+    if (!idRisk && floatRatio >= numericConfidence) return "DOUBLE";
     return "VARCHAR";
   });
 }
 
+function normalizeNumericValue(value: string) {
+  let normalized = value.trim();
+  if (!normalized) {
+    return null;
+  }
+  let negative = false;
+  if (/^\(.*\)$/.test(normalized)) {
+    negative = true;
+    normalized = normalized.slice(1, -1).trim();
+  }
+  normalized = normalized.replace(/[$€£¥₾]/g, "");
+  normalized = normalized.replace(/,/g, "");
+  normalized = normalized.replace(/\s+/g, "");
+  if (!normalized) {
+    return null;
+  }
+  if (negative) {
+    normalized = `-${normalized}`;
+  }
+  return normalized;
+}
+
 function isIntegerValue(value: string) {
-  return /^-?\d+$/.test(value);
+  const normalized = normalizeNumericValue(value);
+  return normalized ? /^-?\d+$/.test(normalized) : false;
 }
 
 function isFloatValue(value: string) {
-  return /^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(value);
+  const normalized = normalizeNumericValue(value);
+  return normalized
+    ? /^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(normalized)
+    : false;
+}
+
+function hasLeadingZeroNumeric(value: string) {
+  const normalized = normalizeNumericValue(value);
+  if (!normalized) {
+    return false;
+  }
+  const unsigned = normalized.startsWith("-")
+    ? normalized.slice(1)
+    : normalized;
+  return /^0\d+$/.test(unsigned);
+}
+
+function isLikelyIdentifierColumn(name: string) {
+  return /(id|code|zip|postal|phone|account|invoice|order|sku|ssn|ein|uuid|guid|iban|routing|swift|tax)/i.test(
+    name
+  );
+}
+
+function isLikelyDateTimeColumn(name: string) {
+  return /(date|time|timestamp|created|updated|deleted|birthday|dob|start|end)/i.test(
+    name
+  );
+}
+
+function isEpochSecondsValue(value: string) {
+  const normalized = normalizeNumericValue(value);
+  if (!normalized || !/^\d+$/.test(normalized)) {
+    return false;
+  }
+  const num = Number(normalized);
+  return Number.isFinite(num) && num >= 1_000_000_000 && num <= 9_999_999_999;
+}
+
+function isEpochMillisValue(value: string) {
+  const normalized = normalizeNumericValue(value);
+  if (!normalized || !/^\d+$/.test(normalized)) {
+    return false;
+  }
+  const num = Number(normalized);
+  return (
+    Number.isFinite(num) &&
+    num >= 1_000_000_000_000 &&
+    num <= 9_999_999_999_999
+  );
+}
+
+function isEpochMicrosValue(value: string) {
+  const normalized = normalizeNumericValue(value);
+  if (!normalized || !/^\d+$/.test(normalized)) {
+    return false;
+  }
+  const num = Number(normalized);
+  return (
+    Number.isFinite(num) &&
+    num >= 1_000_000_000_000_000 &&
+    num <= 9_999_999_999_999_999
+  );
+}
+
+function buildEpochAwareTimestampExpr(columnName: string) {
+  const ident = quoteIdent(columnName);
+  const numeric = `TRY_CAST(${ident} AS DOUBLE)`;
+  return `COALESCE(
+    TRY_CAST(${ident} AS TIMESTAMP),
+    CASE
+      WHEN ${numeric} BETWEEN 1000000000000000 AND 9999999999999999 THEN to_timestamp(${numeric} / 1000000.0)
+      WHEN ${numeric} BETWEEN 1000000000000 AND 9999999999999 THEN to_timestamp(${numeric} / 1000.0)
+      WHEN ${numeric} BETWEEN 1000000000 AND 9999999999 THEN to_timestamp(${numeric})
+      ELSE NULL
+    END
+  )`;
 }
 
 function isDateValue(value: string) {
@@ -431,23 +609,19 @@ async function insertXlsxRows(
   conn: duckdb.AsyncDuckDBConnection,
   tableName: string,
   columns: string[],
-  rows: XlsxCell[][]
+  rows: XlsxCell[][],
+  onBatchInserted?: (current: number, total: number) => void
 ) {
   if (rows.length === 0) {
     return;
   }
-  const placeholders = columns.map(() => "?").join(", ");
-  const stmt = await conn.prepare(
-    `INSERT INTO ${quoteIdent(tableName)} VALUES (${placeholders})`
+  await insertRowsAsArrowBatches(
+    conn,
+    tableName,
+    columns,
+    rows,
+    onBatchInserted
   );
-  const batchSize = 500;
-  for (let i = 0; i < rows.length; i += batchSize) {
-    const batch = rows.slice(i, i + batchSize);
-    for (const row of batch) {
-      await stmt.query(...row);
-    }
-  }
-  await stmt.close();
 }
 
 async function importParquet(
@@ -559,13 +733,24 @@ async function importXlsx(
     effectiveRange.e.r = effectiveRange.s.r;
   }
 
-  const rows = XLSX.utils.sheet_to_json(sheet, {
+  const rawRows = XLSX.utils.sheet_to_json(sheet, {
     header: 1,
     raw: true,
     defval: null,
     range: effectiveRange,
   }) as XlsxCell[][];
-  const columnCount = Math.max(0, ...rows.map((row) => row.length));
+  const { rows, columnCount } = trimTrailingEmptyColumns(rawRows);
+  if (columnCount > XLSX_MAX_IMPORT_COLUMNS) {
+    throw new Error(
+      `Selected Excel sheet resolves to ${columnCount.toLocaleString()} columns, above the ${XLSX_MAX_IMPORT_COLUMNS.toLocaleString()}-column import limit. Select a tighter range or clean stray cells.`
+    );
+  }
+  const estimatedCells = rows.length * columnCount;
+  if (estimatedCells > XLSX_MAX_IMPORT_CELLS) {
+    throw new Error(
+      `Selected Excel range is too large (${estimatedCells.toLocaleString()} cells). Reduce rows/columns or split the sheet before importing.`
+    );
+  }
   const { columns, dataRows } = buildColumnsAndRows(rows, {
     headerEnabled: payload.header,
     headerRowIndex: payload.header ? rangeStart - 1 : null,
@@ -599,21 +784,21 @@ async function importXlsx(
   }
 
   sendProgress(requestId, "importXlsx", "Inserting rows", 50);
-  const placeholders = columns.map(() => "?").join(", ");
-  const stmt = await conn.prepare(
-    `INSERT INTO ${quoteIdent(payload.tableName)} VALUES (${placeholders})`
-  );
-  const batchSize = 500;
-  for (let i = 0; i < totalRows; i += batchSize) {
-    const batch = normalizedRows.slice(i, i + batchSize);
-    for (const row of batch) {
-      await stmt.query(...row);
+  await insertXlsxRows(
+    conn,
+    payload.tableName,
+    columns,
+    normalizedRows,
+    (current, total) => {
+      const percent = 50 + Math.round((current / total) * 40);
+      sendProgress(
+        requestId,
+        "importXlsx",
+        `Inserting rows (${current}/${total})`,
+        percent
+      );
     }
-    const current = Math.min(i + batch.length, totalRows);
-    const percent = 50 + Math.round((current / totalRows) * 40);
-    sendProgress(requestId, "importXlsx", `Inserting rows (${current}/${totalRows})`, percent);
-  }
-  await stmt.close();
+  );
   if (payload.inferTypes) {
     const inferred = await inferTypesFromSample(
       conn,
@@ -676,6 +861,12 @@ async function replaceWithTypedTable(
       const type = columnTypes[index] ?? "VARCHAR";
       if (type === "VARCHAR") {
         return quoteIdent(column);
+      }
+      if (type === "TIMESTAMP") {
+        return `${buildEpochAwareTimestampExpr(column)} AS ${quoteIdent(column)}`;
+      }
+      if (type === "DATE") {
+        return `TRY_CAST(${buildEpochAwareTimestampExpr(column)} AS DATE) AS ${quoteIdent(column)}`;
       }
       return `TRY_CAST(${quoteIdent(column)} AS ${type}) AS ${quoteIdent(
         column
