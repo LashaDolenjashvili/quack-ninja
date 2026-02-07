@@ -10,6 +10,51 @@ type ResultsTableProps = {
   fill?: boolean;
 };
 
+function isLikelyDateTimeColumn(name: string) {
+  return /(date|time|timestamp|created|updated|deleted|birthday|dob|start|end)/i.test(
+    name
+  );
+}
+
+function formatEpochIfNeeded(value: unknown, column: string) {
+  if (value instanceof Date) {
+    return value.toLocaleString();
+  }
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return null;
+  }
+  if (!isLikelyDateTimeColumn(column)) {
+    return null;
+  }
+  let ms: number | null = null;
+  if (value >= 1_000_000_000_000_000 && value <= 9_999_999_999_999_999) {
+    ms = Math.floor(value / 1000);
+  } else if (value >= 1_000_000_000_000 && value <= 9_999_999_999_999) {
+    ms = Math.floor(value);
+  } else if (value >= 1_000_000_000 && value <= 9_999_999_999) {
+    ms = Math.floor(value * 1000);
+  }
+  if (!ms) {
+    return null;
+  }
+  const date = new Date(ms);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return date.toLocaleString();
+}
+
+function formatCell(value: unknown, column: string) {
+  if (value === null || value === undefined) {
+    return "";
+  }
+  const epochFormatted = formatEpochIfNeeded(value, column);
+  if (epochFormatted) {
+    return epochFormatted;
+  }
+  return String(value);
+}
+
 export function ResultsTable({ columns, rows, maxHeight, fill }: ResultsTableProps) {
   const parentRef = useRef<HTMLDivElement | null>(null);
   const visibleRowLimit = 10;
@@ -75,23 +120,19 @@ export function ResultsTable({ columns, rows, maxHeight, fill }: ResultsTablePro
                 }}
               >
                 {columns.map((column) => (
-                  <div
-                    key={`${virtualRow.key}-${column}`}
-                    className="px-3 py-2 text-[#0B1220]"
-                  >
-                    <span
-                      className="block truncate"
-                      title={
-                        row[column] === null || row[column] === undefined
-                          ? ""
-                          : String(row[column])
-                      }
-                    >
-                      {row[column] === null || row[column] === undefined
-                        ? ""
-                        : String(row[column])}
-                    </span>
-                  </div>
+                  (() => {
+                    const displayValue = formatCell(row[column], column);
+                    return (
+                      <div
+                        key={`${virtualRow.key}-${column}`}
+                        className="px-3 py-2 text-[#0B1220]"
+                      >
+                        <span className="block truncate" title={displayValue}>
+                          {displayValue}
+                        </span>
+                      </div>
+                    );
+                  })()
                 ))}
               </div>
             );
