@@ -5,6 +5,7 @@ import { AuthAwareCta } from "@/src/components/Marketing/AuthAwareCta";
 import { Section } from "@/src/components/ui/Section";
 import { Container } from "@/src/components/ui/Container";
 import { Card } from "@/src/components/ui/Card";
+import { useAuth } from "@/src/components/auth/AuthProvider";
 import { EXAMPLE_QUERIES } from "@/src/lib/exampleQueries";
 import { SQL_DIALECT_LABEL, SQL_DIALECT_SHORT } from "@/src/lib/sqlDialect";
 
@@ -49,6 +50,7 @@ const SQL_KEYWORDS = new Set([
 ]);
 
 export function ExampleQueriesSection() {
+  const { user, loading } = useAuth();
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [downloading, setDownloading] = useState(false);
 
@@ -259,12 +261,21 @@ export function ExampleQueriesSection() {
                   <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[color:var(--text-secondary)]">
                     Works on CSV / Excel / Parquet
                   </p>
-                  <a
-                    href={`/app/console?example=${item.id}`}
-                    className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[color:var(--color-primary)] underline decoration-transparent underline-offset-4 transition hover:decoration-current"
-                  >
-                    Open in Console
-                  </a>
+                  {loading ? null : user ? (
+                    <a
+                      href={`/app/console?example=${item.id}`}
+                      className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[color:var(--color-primary)] underline decoration-transparent underline-offset-4 transition hover:decoration-current"
+                    >
+                      Open in Console
+                    </a>
+                  ) : (
+                    <a
+                      href={`/auth/sign-up?next=${encodeURIComponent(`/app/console?example=${item.id}`)}`}
+                      className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[color:var(--color-primary)] underline decoration-transparent underline-offset-4 transition hover:decoration-current"
+                    >
+                      Sign up free to try this example
+                    </a>
+                  )}
                 </div>
               </Card>
             ))}
