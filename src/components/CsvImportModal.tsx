@@ -41,6 +41,20 @@ type CsvImportModalProps = {
     sheetName?: string;
     sheetRange?: { startRow: number; endRow: number } | null;
   }) => Promise<boolean>;
+  onBulkImport: (payload: {
+    files: Array<{
+      file: File;
+      handle?: FileSystemFileHandle | null;
+      tableName: string;
+      delimiter: CsvDelimiter;
+      header: boolean;
+      autoInfer: boolean;
+      fileType: "csv" | "parquet";
+    }>;
+    mode: "separate" | "merge";
+    mergeTableName?: string;
+    includeSourceFileName?: boolean;
+  }) => Promise<boolean>;
 };
 
 const DELIMITER_OPTIONS: { label: string; value: CsvDelimiter }[] = [
@@ -58,11 +72,16 @@ export function CsvImportModal({
   sessionUsageBytes,
   sessionCapBytes,
   onImport,
+  onBulkImport,
   importing = false,
   progress = null,
   allowParquet = false,
   allowExcel = false,
 }: CsvImportModalProps) {
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [selectedHandles, setSelectedHandles] = useState<
+    (FileSystemFileHandle | null)[]
+  >([]);
   const [file, setFile] = useState<File | null>(null);
   const [fileHandle, setFileHandle] = useState<FileSystemFileHandle | null>(
     null
@@ -94,6 +113,10 @@ export function CsvImportModal({
   const [parquetPreviewRows, setParquetPreviewRows] = useState<Record<string, unknown>[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [bulkMode, setBulkMode] = useState<"separate" | "merge">("separate");
+  const [bulkMergeTableName, setBulkMergeTableName] = useState("");
+  const [bulkIncludeSourceFileName, setBulkIncludeSourceFileName] =
+    useState(true);
   const xlsxInferenceTooLarge =
     fileType === "xlsx" &&
     ((file?.size ?? 0) > 200 * 1024 * 1024 ||
@@ -128,6 +151,14 @@ export function CsvImportModal({
         ? "Parquet"
         : "Excel"
     : "—";
+  const isBulk = selectedFiles.length > 1;
+  const hasCsvInBulk = selectedFiles.some((item) =>
+    item.name.toLowerCase().endsWith(".csv")
+  );
+  const bulkTotalBytes = selectedFiles.reduce(
+    (sum, item) => sum + item.size,
+    0
+  );
   const normalizedRange = useMemo(() => {
     if (!xlsxRangeEnabled) {
       return null;
@@ -148,6 +179,8 @@ export function CsvImportModal({
 
   useEffect(() => {
     if (!open) {
+      setSelectedFiles([]);
+      setSelectedHandles([]);
       setFile(null);
       setFileHandle(null);
       setPreflight(null);
@@ -172,6 +205,9 @@ export function CsvImportModal({
       setError(null);
       setSubmitting(false);
       setLoadingPreview(false);
+      setBulkMode("separate");
+      setBulkMergeTableName("");
+      setBulkIncludeSourceFileName(true);
     }
   }, [open]);
 
@@ -315,33 +351,83 @@ export function CsvImportModal({
     return buildPreviewRows(preflight.sampleLines, previewDelimiter);
   }, [preflight, previewDelimiter]);
 
-  const handleFileChange = (nextFile: File | null) => {
+  const resolveFileType = (item: File): "csv" | "parquet" | "xlsx" => {
+    const ext = item.name.split(".").pop()?.toLowerCase();
+    if (ext === "xlsx" || ext === "xls") {
+      return "xlsx";
+    }
+    if (ext === "parquet" || ext === "pq") {
+      return "parquet";
+    }
+    return "csv";
+  };
+
+  const handleFileChange = (
+    nextFiles: File[],
+    nextHandles?: (FileSystemFileHandle | null)[]
+  ) => {
+    setError(null);
+    setSelectedFiles(nextFiles);
+    setSelectedHandles(
+      nextHandles && nextHandles.length === nextFiles.length
+        ? nextHandles
+        : nextFiles.map(() => null)
+    );
+    const nextFile = nextFiles[0] ?? null;
+    const nextHandle = nextHandles?.[0] ?? null;
     setFile(nextFile);
-    setFileHandle(null);
+    setFileHandle(nextHandle);
     if (!nextFile) {
       setFileType("csv");
+      setTableName("");
+      setBulkMergeTableName("");
       return;
     }
-    const ext = nextFile.name.split(".").pop()?.toLowerCase();
-    if (allowExcel && (ext === "xlsx" || ext === "xls")) {
-      setFileType("xlsx");
-      setPreflight(null);
-      setTableName(normalizeTableName(nextFile.name));
-      return;
-    }
-    if (!allowParquet && (ext === "parquet" || ext === "pq")) {
-      setError("Parquet import is not enabled.");
+    const selectedTypes = nextFiles.map((item) => resolveFileType(item));
+    if (
+      nextFiles.length > 1 &&
+      selectedTypes.some((type) => type === "xlsx")
+    ) {
+      setError(
+        "Bulk import supports CSV and Parquet only. Import Excel one file at a time."
+      );
+      setSelectedFiles([]);
+      setSelectedHandles([]);
       setFile(null);
+      setFileHandle(null);
       setFileType("csv");
       return;
     }
-    if (allowParquet && (ext === "parquet" || ext === "pq")) {
-      setFileType("parquet");
-      setPreflight(null);
-      setTableName(normalizeTableName(nextFile.name));
+    if (!allowExcel && selectedTypes.some((type) => type === "xlsx")) {
+      setError("Excel import is not enabled.");
+      setSelectedFiles([]);
+      setSelectedHandles([]);
+      setFile(null);
+      setFileHandle(null);
+      setFileType("csv");
       return;
     }
-    setFileType("csv");
+    if (!allowParquet && selectedTypes.some((type) => type === "parquet")) {
+      setError("Parquet import is not enabled.");
+      setSelectedFiles([]);
+      setSelectedHandles([]);
+      setFile(null);
+      setFileHandle(null);
+      setFileType("csv");
+      return;
+    }
+    const nextType = resolveFileType(nextFile);
+    setFileType(nextType);
+    setPreflight(null);
+    setTableName(normalizeTableName(nextFile.name));
+    if (nextFiles.length > 1) {
+      setBulkMode("separate");
+      setBulkMergeTableName(
+        normalizeTableName(`${nextFile.name.replace(/\.[^/.]+$/, "")}_merged`)
+      );
+    } else {
+      setBulkMergeTableName("");
+    }
   };
 
   const handlePickFile = async () => {
@@ -374,8 +460,8 @@ export function CsvImportModal({
               }
             : {}),
         };
-        const [handle] = await picker({
-          multiple: false,
+        const handles = await picker({
+          multiple: true,
           types: [
             {
               description: supportedDescription,
@@ -383,12 +469,14 @@ export function CsvImportModal({
             },
           ],
         })!;
-        if (!handle) {
+        if (!handles || handles.length === 0) {
           return;
         }
-        const picked = await handle.getFile();
-        handleFileChange(picked);
-        setFileHandle(handle);
+        const pickedFiles = await Promise.all(handles.map((handle) => handle.getFile()));
+        handleFileChange(
+          pickedFiles,
+          handles.map((handle) => handle ?? null)
+        );
         return;
       } catch (err) {
         if ((err as Error)?.name !== "AbortError") {
@@ -401,6 +489,48 @@ export function CsvImportModal({
   };
 
   const handleSubmit = async () => {
+    if (selectedFiles.length === 0) {
+      setError("Choose a file to import.");
+      return;
+    }
+    if (isBulk) {
+      if (selectedFiles.length < 2) {
+        setError("Choose at least two files for bulk import.");
+        return;
+      }
+      if (bulkMode === "merge" && !bulkMergeTableName.trim()) {
+        setError("Merged table name is required.");
+        return;
+      }
+      setSubmitting(true);
+      setError(null);
+      try {
+        const ok = await onBulkImport({
+          files: selectedFiles.map((selectedFile, index) => ({
+            file: selectedFile,
+            handle: selectedHandles[index] ?? null,
+            tableName: normalizeTableName(selectedFile.name),
+            delimiter,
+            header,
+            autoInfer,
+            fileType: resolveFileType(selectedFile) as "csv" | "parquet",
+          })),
+          mode: bulkMode,
+          mergeTableName:
+            bulkMode === "merge" ? bulkMergeTableName.trim() : undefined,
+          includeSourceFileName:
+            bulkMode === "merge" ? bulkIncludeSourceFileName : undefined,
+        });
+        if (ok) {
+          onClose();
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Bulk import failed.");
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
     if (!file) {
       setError("Choose a file to import.");
       return;
@@ -472,6 +602,7 @@ export function CsvImportModal({
           <input
             ref={fileInputRef}
             type="file"
+            multiple
             accept={
               allowParquet
                 ? `.csv,text/csv,.parquet,.pq,application/octet-stream${allowExcel ? ",.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" : ""}`
@@ -482,18 +613,26 @@ export function CsvImportModal({
             className="hidden"
             disabled={isBusy}
             onChange={(event) => {
-              handleFileChange(event.target.files?.[0] ?? null);
+              handleFileChange(
+                event.target.files ? Array.from(event.target.files) : []
+              );
               event.target.value = "";
             }}
           />
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-[#0B1220]">
-                {file ? file.name : "Choose a file"}
+                {isBulk
+                  ? `${selectedFiles.length} files selected`
+                  : file
+                    ? file.name
+                    : "Choose a file"}
               </p>
               <p className="text-xs text-[#5B6B82]">
-                {file
-                  ? `${Math.round(file.size / 1024)}KB · ${fileTypeLabel}`
+                {selectedFiles.length > 0
+                  ? isBulk
+                    ? `${Math.round(bulkTotalBytes / 1024)}KB · Bulk import`
+                    : `${Math.round((file?.size ?? 0) / 1024)}KB · ${fileTypeLabel}`
                   : allowParquet || allowExcel
                     ? supportedLabel
                     : "CSV only"}
@@ -506,10 +645,72 @@ export function CsvImportModal({
               className="px-3 py-1.5 text-sm"
               disabled={isBusy}
             >
-              {file ? "Change file" : "Choose file"}
+              {selectedFiles.length > 0 ? "Change file(s)" : "Choose file(s)"}
             </Button>
           </div>
         </div>
+        {isBulk ? (
+          <div className="mt-4 rounded-xl border border-[#E6EEF7] bg-[#F7FAFC] p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#5B6B82]">
+              Bulk import options
+            </p>
+            <p className="mt-2 text-sm text-[#5B6B82]">
+              Bulk import supports CSV and Parquet only. Excel files must be imported one at a time.
+            </p>
+            <div className="mt-4 flex flex-wrap items-center gap-6 text-sm text-[#5B6B82]">
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="bulk-mode"
+                  value="separate"
+                  checked={bulkMode === "separate"}
+                  onChange={() => setBulkMode("separate")}
+                  disabled={isBusy}
+                  className="h-4 w-4 border-[#D6E2F1]"
+                />
+                Import as separate tables
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="bulk-mode"
+                  value="merge"
+                  checked={bulkMode === "merge"}
+                  onChange={() => setBulkMode("merge")}
+                  disabled={isBusy}
+                  className="h-4 w-4 border-[#D6E2F1]"
+                />
+                Merge into one table (same structure)
+              </label>
+            </div>
+            {bulkMode === "merge" ? (
+              <div className="mt-4 grid gap-3">
+                <label className="flex flex-col gap-2 text-xs font-semibold text-[#5B6B82]">
+                  Merged table name
+                  <input
+                    value={bulkMergeTableName}
+                    onChange={(event) => setBulkMergeTableName(event.target.value)}
+                    disabled={isBusy}
+                    className="rounded-lg border border-[#E6EEF7] bg-white px-3 py-2 text-sm text-[#0B1220]"
+                    placeholder="customers_merged"
+                  />
+                </label>
+                <label className="flex items-center gap-2 text-sm text-[#5B6B82]">
+                  <input
+                    type="checkbox"
+                    checked={bulkIncludeSourceFileName}
+                    onChange={(event) =>
+                      setBulkIncludeSourceFileName(event.target.checked)
+                    }
+                    disabled={isBusy}
+                    className="h-4 w-4 rounded border-[#D6E2F1]"
+                  />
+                  Add <code>source_file_name</code> column
+                </label>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
         {sessionUsageRatio !== null && sessionUsageRatio >= 0.8 ? (
           <Banner tone="warning" className="mt-4 text-sm">
             You&apos;re close to the session limit. Import as text is recommended.
@@ -517,17 +718,19 @@ export function CsvImportModal({
         ) : null}
 
         <div className="mt-5 grid gap-4 md:grid-cols-2">
-          <label className="flex flex-col gap-2 text-xs font-semibold text-[#5B6B82]">
-            Table name
-            <input
-              value={tableName}
-              onChange={(event) => setTableName(event.target.value)}
-              disabled={isBusy}
-              className="rounded-lg border border-[#E6EEF7] bg-[#F7FAFC] px-3 py-2 text-sm text-[#0B1220]"
-              placeholder="customers"
-            />
-          </label>
-          {fileType === "csv" ? (
+          {!isBulk ? (
+            <label className="flex flex-col gap-2 text-xs font-semibold text-[#5B6B82]">
+              Table name
+              <input
+                value={tableName}
+                onChange={(event) => setTableName(event.target.value)}
+                disabled={isBusy}
+                className="rounded-lg border border-[#E6EEF7] bg-[#F7FAFC] px-3 py-2 text-sm text-[#0B1220]"
+                placeholder="customers"
+              />
+            </label>
+          ) : null}
+          {((!isBulk && fileType === "csv") || (isBulk && hasCsvInBulk)) ? (
             <label className="flex flex-col gap-2 text-xs font-semibold text-[#5B6B82]">
               Delimiter
               <select
@@ -548,7 +751,7 @@ export function CsvImportModal({
           ) : null}
         </div>
 
-        {fileType === "csv" ? (
+        {((!isBulk && fileType === "csv") || (isBulk && hasCsvInBulk)) ? (
           <div className="mt-4 flex flex-wrap items-center gap-6 text-sm text-[#5B6B82]">
             <label className="flex items-center gap-2">
               <input
@@ -571,7 +774,7 @@ export function CsvImportModal({
               Auto-detect column types
             </label>
           </div>
-        ) : fileType === "parquet" ? (
+        ) : !isBulk && fileType === "parquet" ? (
           <div className="mt-4 rounded-xl border border-[#E6EEF7] bg-[#F7FAFC] p-4 text-sm text-[#5B6B82]">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#5B6B82]">
               Parquet options
@@ -625,7 +828,7 @@ export function CsvImportModal({
               </div>
             </div>
           </div>
-        ) : fileType === "xlsx" ? (
+        ) : !isBulk && fileType === "xlsx" ? (
           <div className="mt-4 rounded-xl border border-[#E6EEF7] bg-[#F7FAFC] p-4 text-sm text-[#5B6B82]">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#5B6B82]">
               Excel options
@@ -807,7 +1010,7 @@ export function CsvImportModal({
           </Banner>
         ) : null}
 
-        {fileType === "csv" ? (
+        {!isBulk && fileType === "csv" ? (
           <div className="mt-4 rounded-xl border border-[#E6EEF7] bg-[#F7FAFC] p-4">
             <div className="flex items-center justify-between">
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#5B6B82]">
@@ -875,8 +1078,9 @@ export function CsvImportModal({
             onClick={handleSubmit}
             disabled={
               isBusy ||
-              !file ||
-              (fileType === "xlsx" && (!xlsxSheet || xlsxRangeInvalid))
+              selectedFiles.length === 0 ||
+              (!isBulk && fileType === "xlsx" && (!xlsxSheet || xlsxRangeInvalid)) ||
+              (isBulk && bulkMode === "merge" && !bulkMergeTableName.trim())
             }
             className="disabled:opacity-60"
           >

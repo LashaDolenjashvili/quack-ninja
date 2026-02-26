@@ -51,6 +51,35 @@ type SchemaTable = {
   columns: { name: string; type: string }[];
 };
 
+type ImportFileType = "csv" | "parquet" | "xlsx";
+
+type SingleImportPayload = {
+  file: File;
+  handle?: FileSystemFileHandle | null;
+  tableName: string;
+  delimiter: CsvDelimiter;
+  header: boolean;
+  autoInfer: boolean;
+  fileType: ImportFileType;
+  sheetName?: string;
+  sheetRange?: { startRow: number; endRow: number } | null;
+};
+
+type BulkImportPayload = {
+  files: Array<{
+    file: File;
+    handle?: FileSystemFileHandle | null;
+    tableName: string;
+    delimiter: CsvDelimiter;
+    header: boolean;
+    autoInfer: boolean;
+    fileType: "csv" | "parquet";
+  }>;
+  mode: "separate" | "merge";
+  mergeTableName?: string;
+  includeSourceFileName?: boolean;
+};
+
 const CONSOLE_KEY = "console";
 const DEFAULT_SQL = "SELECT 1 AS ready;";
 
@@ -637,17 +666,7 @@ export function WorkspaceEditor() {
   );
 
   const handleCsvImport = useCallback(
-    async (payload: {
-      file: File;
-      handle?: FileSystemFileHandle | null;
-      tableName: string;
-      delimiter: CsvDelimiter;
-      header: boolean;
-      autoInfer: boolean;
-      fileType: "csv" | "parquet" | "xlsx";
-      sheetName?: string;
-      sheetRange?: { startRow: number; endRow: number } | null;
-    }): Promise<boolean> => {
+    async (payload: SingleImportPayload): Promise<boolean> => {
       const {
         file,
         handle,
@@ -913,6 +932,249 @@ export function WorkspaceEditor() {
       setUpgradeContent,
       supportsExcel,
       supportsParquet,
+      totalAttachedBytes,
+      trialUpgradeNote,
+      upgradeTitle,
+    ]
+  );
+
+  const handleBulkImport = useCallback(
+    async (payload: BulkImportPayload): Promise<boolean> => {
+      if (importing) {
+        const message = "Tables are still importing—please wait.";
+        setError(message);
+        throw new Error(message);
+      }
+      if (payload.files.length < 2) {
+        setError("Choose at least two files for bulk import.");
+        return false;
+      }
+      const totalIncomingBytes = payload.files.reduce(
+        (sum, item) => sum + item.file.size,
+        0
+      );
+      for (const item of payload.files) {
+        const fileGate = can("attach_file", { plan, fileSize: item.file.size });
+        if (fileGate !== true) {
+          setError(
+            "One or more files are larger than your plan limit. Split them and try again."
+          );
+          return false;
+        }
+      }
+      const sessionGate = can("attach_total", {
+        plan,
+        totalSize: totalAttachedBytes + totalIncomingBytes,
+      });
+      if (sessionGate !== true) {
+        if (plan === "pro") {
+          setError("You're at the session limit. Detach a table or use smaller files.");
+          return false;
+        }
+        setUpgradeContent({
+          title: upgradeTitle,
+          description: trialUpgradeNote,
+          bullets: [],
+          showUpgrade: true,
+        });
+        setShowUpgradeModal(true);
+        return false;
+      }
+
+      if (payload.mode === "separate") {
+        for (const item of payload.files) {
+          const ok = await handleCsvImport({
+            file: item.file,
+            handle: item.handle ?? null,
+            tableName: item.tableName,
+            delimiter: item.delimiter,
+            header: item.header,
+            autoInfer: item.autoInfer,
+            fileType: item.fileType,
+          });
+          if (!ok) {
+            return false;
+          }
+        }
+        return true;
+      }
+
+      const mergeNameInput = payload.mergeTableName?.trim();
+      if (!mergeNameInput) {
+        setError("Merged table name is required.");
+        return false;
+      }
+      const includeSourceFileName = payload.includeSourceFileName ?? true;
+      const normalizedDefaultMergeName = normalizeTableName(mergeNameInput);
+      const usedNames = new Set<string>(await duckdb.listTables(consoleKey));
+      let mergeTableName = normalizedDefaultMergeName;
+      if (usedNames.has(mergeTableName)) {
+        mergeTableName = sanitizeTableName(mergeTableName, Array.from(usedNames));
+      }
+
+      const inferenceSizeThreshold = Math.min(
+        512 * 1024 * 1024,
+        limits.maxSessionFileBytes * 0.4
+      );
+      const tempTables: string[] = [];
+      setImporting(true);
+      setStatus("Importing");
+      setError(null);
+      try {
+        for (const [index, item] of payload.files.entries()) {
+          const tempName = sanitizeTableName(
+            `${item.tableName}_bulk_tmp_${index + 1}`,
+            Array.from(usedNames)
+          );
+          usedNames.add(tempName);
+          tempTables.push(tempName);
+          if (item.fileType === "parquet") {
+            await enqueueWorkspaceTask(consoleKey, () =>
+              duckdb.importParquet(consoleKey, item.file, tempName, (progress) => {
+                if (progress.stage) {
+                  setStatus(progress.stage);
+                }
+                setImportProgress(progress);
+              })
+            );
+            continue;
+          }
+          const csvMeta = await enqueueWorkspaceTask(consoleKey, () =>
+            duckdb.importCsvLegacy(
+              consoleKey,
+              item.file,
+              tempName,
+              {
+                delimiter: item.delimiter,
+                header: item.header,
+              },
+              item.handle,
+              (progress) => {
+                if (progress.stage) {
+                  setStatus(progress.stage);
+                }
+                setImportProgress(progress);
+              }
+            )
+          );
+          if (item.autoInfer && item.file.size <= inferenceSizeThreshold) {
+            const inferredDelimiter = coerceCsvDelimiter(
+              csvMeta.csvDelimiter ?? item.delimiter
+            );
+            await enqueueWorkspaceTask(consoleKey, () =>
+              duckdb.inferCsvTypes(
+                consoleKey,
+                tempName,
+                {
+                  delimiter: inferredDelimiter,
+                  header: item.header,
+                },
+                (progress) => {
+                  if (progress.stage) {
+                    setStatus(progress.stage);
+                  }
+                  setImportProgress(progress);
+                }
+              )
+            );
+          }
+        }
+
+        const schemas = await Promise.all(
+          tempTables.map((tableName) => duckdb.listColumns(consoleKey, tableName))
+        );
+        const baseSchema = schemas[0] ?? [];
+        for (let i = 1; i < schemas.length; i += 1) {
+          const current = schemas[i] ?? [];
+          const sameLength = current.length === baseSchema.length;
+          const sameColumns =
+            sameLength &&
+            current.every((column, colIndex) => {
+              const base = baseSchema[colIndex];
+              return (
+                base &&
+                base.name === column.name &&
+                base.type.toLowerCase() === column.type.toLowerCase()
+              );
+            });
+          if (!sameColumns) {
+            throw new Error(
+              "Files cannot be merged automatically. Column names and column types must match across all selected files."
+            );
+          }
+        }
+
+        const mergeSql = `CREATE TABLE ${formatSqlIdentifier(mergeTableName)} AS ${tempTables
+          .map((tableName, index) => {
+            const baseSelect = `SELECT * FROM ${formatSqlIdentifier(tableName)}`;
+            if (!includeSourceFileName) {
+              return baseSelect;
+            }
+            const fileNameLiteral = toSqlStringLiteral(
+              payload.files[index]?.file.name ?? ""
+            );
+            return `SELECT *, ${fileNameLiteral} AS source_file_name FROM ${formatSqlIdentifier(tableName)}`;
+          })
+          .join(" UNION ALL ")}`;
+        await enqueueWorkspaceTask(consoleKey, () => duckdb.query(consoleKey, mergeSql));
+        for (const tempName of tempTables) {
+          await enqueueWorkspaceTask(consoleKey, () =>
+            duckdb.dropTable(consoleKey, tempName)
+          );
+        }
+        const combinedEntry: AttachedFileMeta = {
+          tableName: mergeTableName,
+          fileName: `${payload.files.length} files (merged)`,
+          fileType: payload.files.every((item) => item.fileType === "parquet")
+            ? "parquet"
+            : "csv",
+          fileSize: totalIncomingBytes,
+          createdAt: Date.now(),
+          hasHandle: false,
+          inferredTypes: payload.files.every((item) => item.fileType === "parquet")
+            ? true
+            : payload.files.every((item) => item.autoInfer),
+        };
+        setAttachedFiles((current) => {
+          const withoutMerged = current.filter(
+            (entry) => entry.tableName !== mergeTableName
+          );
+          return [...withoutMerged, combinedEntry];
+        });
+        await refreshSchema();
+        return true;
+      } catch (err) {
+        for (const tempName of tempTables) {
+          try {
+            await enqueueWorkspaceTask(consoleKey, () =>
+              duckdb.dropTable(consoleKey, tempName)
+            );
+          } catch {
+            // Best effort cleanup.
+          }
+        }
+        logClientError(err, "Bulk merge import failed");
+        const message = getFriendlyErrorMessage(err, {
+          sessionUsageBytes: totalAttachedBytes,
+          sessionCapBytes: limits.maxSessionFileBytes,
+        });
+        setError(message);
+        throw new Error(message);
+      } finally {
+        setImporting(false);
+        setImportProgress(null);
+        setStatus("Ready");
+      }
+    },
+    [
+      consoleKey,
+      duckdb,
+      handleCsvImport,
+      importing,
+      limits.maxSessionFileBytes,
+      plan,
+      refreshSchema,
+      setAttachedFiles,
       totalAttachedBytes,
       trialUpgradeNote,
       upgradeTitle,
@@ -2435,6 +2697,7 @@ export function WorkspaceEditor() {
         sessionUsageBytes={totalAttachedBytes}
         sessionCapBytes={limits.maxSessionFileBytes}
         onImport={handleCsvImport}
+        onBulkImport={handleBulkImport}
         allowParquet={supportsParquet}
         allowExcel={supportsExcel}
         importing={importing}
@@ -2549,6 +2812,10 @@ function coerceCsvDelimiter(value: string | null | undefined): CsvDelimiter {
     return value as CsvDelimiter;
   }
   return "auto";
+}
+
+function toSqlStringLiteral(value: string) {
+  return `'${value.replace(/'/g, "''")}'`;
 }
 
 function applyAutoLimit(
