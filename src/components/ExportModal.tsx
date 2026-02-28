@@ -148,7 +148,7 @@ export function ExportModal({
             disabled={effectiveDisabled}
             className="disabled:opacity-50"
           >
-            Export
+            Export CSV
           </Button>
         </ModalFooter>
       </ModalContent>

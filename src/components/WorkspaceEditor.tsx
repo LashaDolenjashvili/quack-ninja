@@ -80,6 +80,16 @@ type BulkImportPayload = {
   includeSourceFileName?: boolean;
 };
 
+type TabResultState = {
+  columns: string[];
+  rows: Record<string, unknown>[];
+  rowCount: number;
+  pageIndex: number;
+  runtimeMs: number;
+  previewApplied: boolean;
+  hasRun: boolean;
+};
+
 const CONSOLE_KEY = "console";
 const DEFAULT_SQL = "SELECT 1 AS ready;";
 
@@ -152,7 +162,6 @@ export function WorkspaceEditor() {
     persistedAttachments,
     setPersistedAttachments,
     hydrationStatus,
-    lastQueryPreview: sessionLastQueryPreview,
     setLastQueryPreview: setSessionLastQueryPreview,
   } = useConsoleSession();
   const limits = entitlements;
@@ -170,14 +179,14 @@ export function WorkspaceEditor() {
     [activeTabId, queryTabs]
   );
   const sql = activeTab?.sql ?? "";
-  const updateActiveTab = useCallback(
-    (updates: { sql?: string; name?: string; lastRunSql?: string }) => {
-      if (!activeTab) {
-        return;
-      }
+  const updateQueryTab = useCallback(
+    (
+      tabId: string,
+      updates: { sql?: string; name?: string; lastRunSql?: string }
+    ) => {
       setQueryTabs((current) =>
         current.map((tab) =>
-          tab.id === activeTab.id
+          tab.id === tabId
             ? {
                 ...tab,
                 ...updates,
@@ -187,7 +196,54 @@ export function WorkspaceEditor() {
         )
       );
     },
-    [activeTab, setQueryTabs]
+    [setQueryTabs]
+  );
+  const updateActiveTab = useCallback(
+    (updates: { sql?: string; name?: string; lastRunSql?: string }) => {
+      if (!activeTab) {
+        return;
+      }
+      updateQueryTab(activeTab.id, updates);
+    },
+    [activeTab, updateQueryTab]
+  );
+  const setTabResult = useCallback(
+    (
+      tabId: string,
+      updater:
+        | TabResultState
+        | null
+        | ((current: TabResultState | null) => TabResultState | null)
+    ) => {
+      setTabResults((current) => {
+        const existing = current[tabId] ?? null;
+        const next =
+          typeof updater === "function" ? updater(existing) : updater;
+        if (!next) {
+          const { [tabId]: _removed, ...rest } = current;
+          return rest;
+        }
+        return {
+          ...current,
+          [tabId]: next,
+        };
+      });
+    },
+    []
+  );
+  const updateActiveTabResult = useCallback(
+    (
+      updater:
+        | TabResultState
+        | null
+        | ((current: TabResultState | null) => TabResultState | null)
+    ) => {
+      if (!activeTab) {
+        return;
+      }
+      setTabResult(activeTab.id, updater);
+    },
+    [activeTab, setTabResult]
   );
 
   const isTabDirty = useCallback((tab: { sql: string; lastRunSql?: string | null }) => {
@@ -266,15 +322,12 @@ export function WorkspaceEditor() {
     [activeTabId, isTabDirty, queryTabs, setActiveTabId, setQueryTabs]
   );
   const autoLimit = true;
-  const [runtimeMs, setRuntimeMs] = useState(0);
   const [tableCount, setTableCount] = useState(0);
   const [status, setStatus] = useState("Ready");
   const [error, setError] = useState<string | null>(null);
-  const [previewApplied, setPreviewApplied] = useState(false);
-  const [resultColumns, setResultColumns] = useState<string[]>([]);
-  const [resultRows, setResultRows] = useState<Record<string, unknown>[]>([]);
-  const [resultRowCount, setResultRowCount] = useState(0);
-  const [pageIndex, setPageIndex] = useState(0);
+  const [tabResults, setTabResults] = useState<Record<string, TabResultState>>(
+    {}
+  );
   const pageSize = 100;
   const [schema, setSchema] = useState<SchemaTable[]>([]);
   const [schemaFilter, setSchemaFilter] = useState("");
@@ -312,6 +365,7 @@ export function WorkspaceEditor() {
   const [importProgress, setImportProgress] = useState<WorkerProgress | null>(
     null
   );
+  const runQueryRef = useRef<() => void>(() => undefined);
   const copyToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const persistedAttachmentsRef = useRef<AttachedFileMeta[]>(persistedAttachments);
@@ -344,6 +398,22 @@ export function WorkspaceEditor() {
   }, [persistedAttachments]);
 
   useEffect(() => {
+    setTabResults((current) => {
+      const validIds = new Set(queryTabs.map((tab) => tab.id));
+      let changed = false;
+      const next: Record<string, TabResultState> = {};
+      for (const [tabId, result] of Object.entries(current)) {
+        if (validIds.has(tabId)) {
+          next[tabId] = result;
+        } else {
+          changed = true;
+        }
+      }
+      return changed ? next : current;
+    });
+  }, [queryTabs]);
+
+  useEffect(() => {
     restoreStateRef.current = "idle";
   }, [consoleKey]);
 
@@ -353,6 +423,7 @@ export function WorkspaceEditor() {
       (entry) => !tableNames.has(entry.tableName) && !entry.hasHandle
     );
   }, [persistedAttachments, schema]);
+  const activeTabResult = activeTab ? (tabResults[activeTab.id] ?? null) : null;
 
   const isMissingTableError = useCallback((err: unknown) => {
     if (!err) {
@@ -1366,10 +1437,6 @@ export function WorkspaceEditor() {
       setSchema([]);
       setTableCount(0);
     }
-    if (sessionLastQueryPreview) {
-      setRuntimeMs(sessionLastQueryPreview.runtimeMs);
-    }
-
     const canRestore = hydrationStatus === "hydrated";
     if (canRestore && attachedFiles.length === 0 && restoreStateRef.current === "idle") {
       restoreFromHandles(false);
@@ -1381,7 +1448,6 @@ export function WorkspaceEditor() {
     consoleKey,
     attachedFiles.length,
     attachmentsHydrated,
-    sessionLastQueryPreview,
     sessionTables,
     setAttachedFiles,
     setDuckdbRegistrationState,
@@ -1432,65 +1498,105 @@ export function WorkspaceEditor() {
     void syncSources();
   }, [attachedFiles, attachmentsHydrated, consoleKey, setPersistedAttachments]);
 
+  const executeQueryForTab = useCallback(
+    async (tabId: string, sqlText: string) => {
+      if (importing) {
+        setError("Tables are still importing—please wait.");
+        return;
+      }
+      setStatus("Running");
+      setError(null);
+      const { sql: finalSql, previewed } = applyAutoLimit(
+        sqlText,
+        autoLimit,
+        limits.previewLimit
+      );
+      updateQueryTab(tabId, { lastRunSql: sqlText });
+      try {
+        const result = await enqueueWorkspaceTask(consoleKey, async () =>
+          duckdb.query(consoleKey, finalSql)
+        );
+        setTabResult(tabId, {
+          columns: result.columns,
+          rows: result.rows.slice(0, limits.maxRenderRows),
+          rowCount: result.rowCount,
+          pageIndex: 0,
+          runtimeMs: result.elapsedMs,
+          previewApplied: previewed,
+          hasRun: true,
+        });
+        updateConsoleQueryPreview(
+          consoleKey,
+          result.rowCount,
+          result.elapsedMs
+        );
+        setSessionLastQueryPreview({
+          rows: result.rowCount,
+          runtimeMs: result.elapsedMs,
+        });
+        await refreshSchema();
+        await refreshSavedQueries();
+        setStatus("Ready");
+      } catch (err) {
+        setStatus("Error");
+        logClientError(err, "Query failed");
+        setError(
+          getFriendlyErrorMessage(err, {
+            sessionUsageBytes: totalAttachedBytes,
+            sessionCapBytes: limits.maxSessionFileBytes,
+          })
+        );
+      }
+    },
+    [
+      autoLimit,
+      consoleKey,
+      duckdb,
+      importing,
+      limits.maxRenderRows,
+      limits.maxSessionFileBytes,
+      limits.previewLimit,
+      refreshSavedQueries,
+      refreshSchema,
+      setSessionLastQueryPreview,
+      setTabResult,
+      totalAttachedBytes,
+      updateQueryTab,
+    ]
+  );
 
-
-  const runQuery = async () => {
-    if (importing) {
-      setError("Tables are still importing—please wait.");
+  const runQuery = useCallback(async () => {
+    if (!activeTab) {
       return;
     }
-    setStatus("Running");
-    setError(null);
-    const { sql: finalSql, previewed } = applyAutoLimit(
-      sql,
-      autoLimit,
-      limits.previewLimit
-    );
-    updateActiveTab({ lastRunSql: sql });
-    setPreviewApplied(previewed);
-    try {
-      const result = await enqueueWorkspaceTask(consoleKey, async () =>
-        duckdb.query(consoleKey, finalSql)
-      );
-      setResultColumns(result.columns);
-      setResultRows(result.rows.slice(0, limits.maxRenderRows));
-      setResultRowCount(result.rowCount);
-      setPageIndex(0);
-      setRuntimeMs(result.elapsedMs);
-      updateConsoleQueryPreview(
-        consoleKey,
-        result.rowCount,
-        result.elapsedMs
-      );
-      setSessionLastQueryPreview({
-        rows: result.rowCount,
-        runtimeMs: result.elapsedMs,
-      });
-      await refreshSchema();
-      await refreshSavedQueries();
-      setStatus("Ready");
-    } catch (err) {
-      setStatus("Error");
-      logClientError(err, "Query failed");
-      setError(
-        getFriendlyErrorMessage(err, {
-          sessionUsageBytes: totalAttachedBytes,
-          sessionCapBytes: limits.maxSessionFileBytes,
-        })
-      );
-    }
-  };
+    await executeQueryForTab(activeTab.id, activeTab.sql);
+  }, [activeTab, executeQueryForTab]);
 
   const clearQuery = () => {
     updateActiveTab({ sql: "" });
-    setResultColumns([]);
-    setResultRows([]);
-    setResultRowCount(0);
-    setRuntimeMs(0);
+    updateActiveTabResult(null);
     setError(null);
-    setPreviewApplied(false);
-    setPageIndex(0);
   };
+
+  const handleProfileTable = useCallback(
+    async (table: SchemaTable) => {
+      const profileSql = buildTableProfileSql(table);
+      const nextId = `tab-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      const nextTab = {
+        id: nextId,
+        name: `Summary: ${table.name}`,
+        sql: profileSql,
+        lastRunSql: profileSql,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      setQueryTabs((current) => [...current, nextTab]);
+      setActivePanel("results");
+      setActiveTabId(nextId);
+      await executeQueryForTab(nextId, profileSql);
+    },
+    [executeQueryForTab, setActiveTabId, setQueryTabs]
+  );
 
   const insertSqlSnippet = useCallback(
     (snippet: string) => {
@@ -1769,6 +1875,12 @@ export function WorkspaceEditor() {
     }
   };
 
+  const resultColumns = activeTabResult?.columns ?? [];
+  const resultRows = activeTabResult?.rows ?? [];
+  const resultRowCount = activeTabResult?.rowCount ?? 0;
+  const pageIndex = activeTabResult?.pageIndex ?? 0;
+  const previewApplied = activeTabResult?.previewApplied ?? false;
+  const resultRuntimeMs = activeTabResult?.runtimeMs ?? 0;
   const previewRowLabel = resultRows.length.toLocaleString();
   const rowCountColor = getRowCountColor(resultRowCount);
   const exportPlan = getExportPlan(sql, limits.exportMaxRows);
@@ -1801,7 +1913,7 @@ export function WorkspaceEditor() {
     attachedFiles.length === 0 &&
     duckdbRegistrationState.hasNonHandleAttachments;
   const trimmedSql = sql.trim();
-  const hasRun = sessionLastQueryPreview !== null;
+  const hasRun = activeTabResult?.hasRun ?? false;
   const runDisabled = !trimmedSql || tableCount === 0;
   const runDisabledReason =
     tableCount === 0 ? "Attach a file first" : "Enter SQL to run";
@@ -1813,6 +1925,7 @@ export function WorkspaceEditor() {
       ? `${previewRowLabel} (${showingSuffix})`
       : previewRowLabel
     : "No results yet";
+  const runtimeLabel = hasRun ? formatRuntimeMs(resultRuntimeMs) : null;
   const exportCapLabel = `${limitText.exportRows} (${plan === "pro" ? "Pro" : "Free"})`;
   const preferredTable = useMemo(() => {
     if (selectedTable) {
@@ -1839,6 +1952,8 @@ export function WorkspaceEditor() {
     await restoreFromHandles(true);
   };
 
+  runQueryRef.current = runQuery;
+
   return (
     <div className="grid min-h-screen grid-rows-[auto_1fr] bg-[color:var(--color-bg)] text-[color:var(--text-primary)]">
       <WorkspaceTopBar
@@ -1863,7 +1978,7 @@ export function WorkspaceEditor() {
               <button
                 type="button"
                 onClick={handleAttachClick}
-                className="rounded-lg border border-[#003C79] bg-[#003C79] px-2.5 py-1 text-[11px] font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79]"
+                className="rounded-lg border border-[#003C79] bg-[#003C79] px-2.5 py-1 text-[11px] font-semibold text-white transition-colors duration-150 hover:bg-[#002f60] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79]"
               >
                 {attachLabel}
               </button>
@@ -1871,7 +1986,7 @@ export function WorkspaceEditor() {
                 type="button"
                 onClick={handleDetachAll}
                 disabled={attachedFiles.length === 0}
-                className="rounded-lg border border-[#E6EEF7] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#003C79] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79] disabled:opacity-50"
+                className="rounded-lg border border-[#E6EEF7] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#003C79] transition-colors duration-150 hover:border-[#BCD3EC] hover:bg-[#F7FAFC] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79] disabled:opacity-50"
               >
                 Detach all
               </button>
@@ -1920,7 +2035,7 @@ export function WorkspaceEditor() {
                 <button
                   type="button"
                   onClick={handleRestoreRequest}
-                  className="mt-2 rounded-md border border-[#E6EEF7] bg-white px-2 py-1 text-[11px] font-semibold text-[#003C79]"
+                  className="mt-2 rounded-md border border-[#E6EEF7] bg-white px-2 py-1 text-[11px] font-semibold text-[#003C79] transition-colors duration-150 hover:border-[#BCD3EC] hover:bg-[#F7FAFC]"
                 >
                   Reconnect files
                 </button>
@@ -1934,7 +2049,7 @@ export function WorkspaceEditor() {
                 <button
                   type="button"
                   onClick={() => setShowCsvImportModal(true)}
-                  className="mt-2 rounded-md border border-[#E6EEF7] bg-white px-2 py-1 text-[11px] font-semibold text-[#003C79]"
+                  className="mt-2 rounded-md border border-[#E6EEF7] bg-white px-2 py-1 text-[11px] font-semibold text-[#003C79] transition-colors duration-150 hover:border-[#BCD3EC] hover:bg-[#F7FAFC]"
                 >
                   {attachLabel}
                 </button>
@@ -1949,7 +2064,7 @@ export function WorkspaceEditor() {
                 <button
                   type="button"
                   onClick={() => setShowCsvImportModal(true)}
-                  className="mt-3 rounded-lg bg-[#003C79] px-3 py-1.5 text-xs font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79]"
+                  className="mt-3 rounded-lg bg-[#003C79] px-3 py-1.5 text-xs font-semibold text-white transition-colors duration-150 hover:bg-[#002f60] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79]"
                 >
                   {attachLabel}
                 </button>
@@ -2008,6 +2123,35 @@ export function WorkspaceEditor() {
                         </div>
                       </div>
                       <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <div className="relative group">
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void handleProfileTable(table);
+                            }}
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-transparent text-[#3A6EA5] hover:border-[#D8E5F4] hover:bg-white hover:text-[#003C79] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79]"
+                            aria-label="Quick summary"
+                          >
+                            <svg
+                              viewBox="0 0 24 24"
+                              className="h-4 w-4"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="1.8"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <path d="M4 19h16" />
+                              <path d="M7 16V9" />
+                              <path d="M12 16V5" />
+                              <path d="M17 16v-3" />
+                            </svg>
+                          </button>
+                          <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 rounded-md bg-[#0B1220] px-2 py-1 text-[10px] font-semibold text-white opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100">
+                            Quick summary
+                          </span>
+                        </div>
                         <div className="relative group">
                           <button
                             type="button"
@@ -2169,6 +2313,9 @@ export function WorkspaceEditor() {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
+                  <span className="hidden text-[11px] font-medium text-[#7A8AA1] md:inline">
+                    Ctrl/Cmd + Enter
+                  </span>
                   <button
                     type="button"
                     onClick={runQuery}
@@ -2179,10 +2326,10 @@ export function WorkspaceEditor() {
                         ? runDisabledReason ?? "Enter SQL to run"
                         : "Run SQL"
                     }
-                    className={`inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-xs font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79] ${
+                    className={`inline-flex h-9 min-w-[96px] items-center justify-center gap-2 rounded-lg border px-3 text-xs font-semibold transition-all duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79] ${
                       runDisabled || status === "Running"
                         ? "border-[#E6EEF7] bg-white text-[#9AA9BE] opacity-60"
-                        : "border-[#003C79] bg-[#003C79] text-white"
+                        : "border-[#003C79] bg-[#003C79] text-white hover:bg-[#002f60] hover:shadow-[0_6px_18px_rgba(0,60,121,0.18)]"
                     }`}
                   >
                     {status === "Running" ? (
@@ -2191,7 +2338,7 @@ export function WorkspaceEditor() {
                     {status === "Running" ? "Running…" : "Run"}
                   </button>
                   <button
-                    className="h-9 rounded-lg border border-[#E6EEF7] bg-white px-3 text-xs font-semibold text-[#003C79] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79]"
+                    className="h-9 rounded-lg border border-[#E6EEF7] bg-white px-3 text-xs font-semibold text-[#003C79] transition-colors duration-150 hover:border-[#BCD3EC] hover:bg-[#F7FAFC] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79]"
                     onClick={handleSaveClick}
                     disabled={!sql.trim()}
                   >
@@ -2199,7 +2346,7 @@ export function WorkspaceEditor() {
                   </button>
                   <button
                     type="button"
-                    className="h-9 rounded-lg border border-transparent px-3 text-xs font-semibold text-[#5B6B82] hover:border-[#E6EEF7] hover:bg-white hover:text-[#003C79] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79]"
+                    className="h-9 rounded-lg border border-transparent px-3 text-xs font-semibold text-[#5B6B82] transition-colors duration-150 hover:border-[#E6EEF7] hover:bg-white hover:text-[#003C79] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79]"
                     onClick={clearQuery}
                     aria-label="Clear editor"
                     title="Clear editor"
@@ -2265,7 +2412,7 @@ export function WorkspaceEditor() {
                 <button
                   type="button"
                   onClick={handleNewTab}
-                  className="inline-flex items-center gap-1 rounded-lg border border-[#E6EEF7] bg-white px-2.5 py-1 text-xs font-semibold text-[#003C79] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79]"
+                  className="inline-flex items-center gap-1 rounded-lg border border-[#E6EEF7] bg-white px-2.5 py-1 text-xs font-semibold text-[#003C79] transition-colors duration-150 hover:border-[#BCD3EC] hover:bg-[#F7FAFC] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79]"
                 >
                   + New tab
                 </button>
@@ -2277,8 +2424,14 @@ export function WorkspaceEditor() {
                   theme="vs-light"
                   value={sql}
                   onChange={(value) => updateActiveTab({ sql: value ?? "" })}
-                  onMount={(editor) => {
+                  onMount={(editor, monacoInstance) => {
                     editorRef.current = editor;
+                    editor.addCommand(
+                      monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.Enter,
+                      () => {
+                        runQueryRef.current();
+                      }
+                    );
                   }}
                   options={{
                     minimap: { enabled: false },
@@ -2318,10 +2471,27 @@ export function WorkspaceEditor() {
                     : savedQueries.length}
                   )
                 </button>
+                <div className="hidden items-center gap-2 text-xs text-[#5B6B82] lg:flex">
+                  {hasRun ? (
+                    <span className={`${rowCountColor} tabular-nums`}>
+                      Showing: {showingLabel}
+                    </span>
+                  ) : (
+                    <span>No results yet</span>
+                  )}
+                  {runtimeLabel ? (
+                    <>
+                      <span className="text-[#E6EEF7]">•</span>
+                      <span className="tabular-nums">Run: {runtimeLabel}</span>
+                    </>
+                  ) : null}
+                  <span className="text-[#E6EEF7]">•</span>
+                  <span className="tabular-nums">Export limit: {exportCapLabel}</span>
+                </div>
                 <div className="ml-auto flex items-center gap-2">
                   <button
                     type="button"
-                    className="inline-flex items-center gap-2 rounded-lg border border-[#E6EEF7] bg-white px-3 py-1.5 text-xs font-semibold text-[#003C79] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79] disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-lg border border-[#E6EEF7] bg-white px-3 py-1.5 text-xs font-semibold text-[#003C79] transition-all duration-150 hover:border-[#BCD3EC] hover:bg-[#F7FAFC] hover:shadow-[0_6px_16px_rgba(11,18,32,0.06)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79] disabled:opacity-50"
                     onClick={() => setShowExportModal(true)}
                     disabled={exportDisabled || exporting}
                     aria-disabled={exportDisabled || exporting}
@@ -2334,22 +2504,9 @@ export function WorkspaceEditor() {
                     {exporting ? (
                       <span className="h-3 w-3 animate-spin rounded-full border border-[#003C79]/40 border-t-[#003C79]" />
                     ) : null}
-                    {exporting ? "Exporting…" : "Export"}
+                    {exporting ? "Exporting…" : "Export CSV"}
                   </button>
                 </div>
-              </div>
-              <div className="shrink-0 px-6 py-3 text-xs text-[#5B6B82]">
-                {hasRun ? (
-                  <span className={`${rowCountColor} tabular-nums`}>
-                    Showing: {showingLabel}
-                  </span>
-                ) : (
-                  <span className="text-[#5B6B82]">No results yet</span>
-                )}
-                <span className="mx-2 text-[#E6EEF7]">•</span>
-                <span className="tabular-nums">
-                  Export limit: {exportCapLabel}
-                </span>
               </div>
 
               <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto px-6 py-4">
@@ -2512,7 +2669,14 @@ export function WorkspaceEditor() {
                   <button
                     className="rounded-lg border border-[#E6EEF7] px-2 py-1 text-xs font-semibold text-[#003C79] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79] disabled:opacity-50"
                     onClick={() =>
-                      setPageIndex((value) => Math.max(0, value - 1))
+                      updateActiveTabResult((current) =>
+                        current
+                          ? {
+                              ...current,
+                              pageIndex: Math.max(0, current.pageIndex - 1),
+                            }
+                          : current
+                      )
                     }
                     disabled={pageIndex === 0}
                   >
@@ -2521,8 +2685,13 @@ export function WorkspaceEditor() {
                   <button
                     className="rounded-lg border border-[#E6EEF7] px-2 py-1 text-xs font-semibold text-[#003C79] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#003C79] disabled:opacity-50"
                     onClick={() =>
-                      setPageIndex((value) =>
-                        Math.min(pageCount - 1, value + 1)
+                      updateActiveTabResult((current) =>
+                        current
+                          ? {
+                              ...current,
+                              pageIndex: Math.min(pageCount - 1, current.pageIndex + 1),
+                            }
+                          : current
                       )
                     }
                     disabled={pageIndex >= pageCount - 1}
@@ -2782,6 +2951,135 @@ function formatBytes(bytes: number) {
     return `${Math.round(bytes / (1024 * 1024))}MB`;
   }
   return `${Math.round(bytes / 1024)}KB`;
+}
+
+function formatRuntimeMs(runtimeMs: number) {
+  if (runtimeMs < 1000) {
+    return `${Math.round(runtimeMs)}ms`;
+  }
+  if (runtimeMs < 60_000) {
+    return `${(runtimeMs / 1000).toFixed(2)}s`;
+  }
+  return `${(runtimeMs / 60_000).toFixed(2)}m`;
+}
+
+function buildTableProfileSql(table: SchemaTable) {
+  const tableRef = formatSqlIdentifier(table.name);
+  const selects: string[] = [];
+
+  for (const column of table.columns) {
+    const columnRef = formatSqlIdentifier(column.name);
+    const columnName = toSqlStringLiteral(column.name);
+    const dataType = toSqlStringLiteral(column.type);
+    const isNumeric = isNumericProfileType(column.type);
+    const isTemporal = isTemporalProfileType(column.type);
+    const isCategorical = isCategoricalProfileType(column.type);
+    const numericValueRef = `CAST(${columnRef} AS DOUBLE)`;
+    const minExpr =
+      isNumeric || isTemporal
+        ? `COALESCE(CAST(MIN(${columnRef}) AS VARCHAR), '—')`
+        : `'—'`;
+    const maxExpr =
+      isNumeric || isTemporal
+        ? `COALESCE(CAST(MAX(${columnRef}) AS VARCHAR), '—')`
+        : `'—'`;
+    const meanExpr = isNumeric
+      ? `COALESCE(CAST(ROUND(AVG(${numericValueRef}), 4) AS VARCHAR), '—')`
+      : `'—'`;
+    const stdExpr = isNumeric
+      ? `COALESCE(CAST(ROUND(STDDEV_SAMP(${numericValueRef}), 4) AS VARCHAR), '—')`
+      : `'—'`;
+    const p25Expr = isNumeric
+      ? `COALESCE(CAST(ROUND(QUANTILE_CONT(${numericValueRef}, 0.25), 4) AS VARCHAR), '—')`
+      : `'—'`;
+    const medianExpr = isNumeric
+      ? `COALESCE(CAST(ROUND(QUANTILE_CONT(${numericValueRef}, 0.5), 4) AS VARCHAR), '—')`
+      : `'—'`;
+    const p75Expr = isNumeric
+      ? `COALESCE(CAST(ROUND(QUANTILE_CONT(${numericValueRef}, 0.75), 4) AS VARCHAR), '—')`
+      : `'—'`;
+    const uniqueExpr = isCategorical
+      ? `CAST(COUNT(DISTINCT ${columnRef}) AS VARCHAR)`
+      : `'—'`;
+    const topExpr = isCategorical
+      ? `COALESCE((SELECT top_value FROM (SELECT COALESCE(NULLIF(TRIM(CAST(${columnRef} AS VARCHAR)), ''), '<empty>') AS top_value, COUNT(*) AS top_count FROM ${tableRef} WHERE ${columnRef} IS NOT NULL GROUP BY 1 ORDER BY top_count DESC LIMIT 1) fs_top), '—')`
+      : `'—'`;
+    const freqExpr = isCategorical
+      ? `COALESCE((SELECT CAST(top_count AS VARCHAR) FROM (SELECT COALESCE(NULLIF(TRIM(CAST(${columnRef} AS VARCHAR)), ''), '<empty>') AS top_value, COUNT(*) AS top_count FROM ${tableRef} WHERE ${columnRef} IS NOT NULL GROUP BY 1 ORDER BY top_count DESC LIMIT 1) fs_top), '—')`
+      : `'—'`;
+
+    selects.push(`
+SELECT
+  ${columnName} AS column_name,
+  ${dataType} AS data_type,
+  COUNT(${columnRef}) AS count,
+  COUNT(*) - COUNT(${columnRef}) AS nulls,
+  CASE
+    WHEN COUNT(*) = 0 THEN '0.00%'
+    ELSE CAST(ROUND(((COUNT(*) - COUNT(${columnRef})) * 100.0) / COUNT(*), 2) AS VARCHAR) || '%'
+  END AS null_pct,
+  ${uniqueExpr} AS unique_values,
+  ${topExpr} AS top,
+  ${freqExpr} AS freq,
+  ${meanExpr} AS mean,
+  ${stdExpr} AS std,
+  ${minExpr} AS min_value,
+  ${p25Expr} AS p25,
+  ${medianExpr} AS median,
+  ${p75Expr} AS p75,
+  ${maxExpr} AS max_value,
+  CASE
+    WHEN ${isNumeric ? "TRUE" : "FALSE"} THEN 'numeric'
+    WHEN ${isTemporal ? "TRUE" : "FALSE"} THEN 'temporal'
+    WHEN ${isCategorical ? "TRUE" : "FALSE"} THEN 'object'
+    ELSE 'other'
+  END AS profile_kind
+FROM ${tableRef}`.trim());
+  }
+
+  return `${selects.join("\nUNION ALL\n")}\nORDER BY column_name;`;
+}
+
+function isNumericProfileType(type: string) {
+  const normalized = type.trim().toUpperCase();
+  return [
+    "TINYINT",
+    "SMALLINT",
+    "INTEGER",
+    "BIGINT",
+    "UTINYINT",
+    "USMALLINT",
+    "UINTEGER",
+    "UBIGINT",
+    "HUGEINT",
+    "UHUGEINT",
+    "FLOAT",
+    "DOUBLE",
+    "REAL",
+    "DECIMAL",
+    "NUMERIC",
+  ].some((token) => normalized === token || normalized.startsWith(`${token}(`));
+}
+
+function isTemporalProfileType(type: string) {
+  const normalized = type.trim().toUpperCase();
+  return (
+    normalized === "DATE" ||
+    normalized.startsWith("TIMESTAMP") ||
+    normalized === "TIME"
+  );
+}
+
+function isCategoricalProfileType(type: string) {
+  const normalized = type.trim().toUpperCase();
+  return (
+    normalized === "BOOLEAN" ||
+    normalized === "BOOL" ||
+    normalized.includes("CHAR") ||
+    normalized.includes("TEXT") ||
+    normalized === "UUID" ||
+    normalized === "VARCHAR"
+  );
 }
 
 function getFriendlyErrorMessage(
