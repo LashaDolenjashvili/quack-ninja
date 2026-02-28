@@ -7,6 +7,7 @@ import { createPortal } from "react-dom";
 import { Logo } from "@/src/components/Logo";
 import { Button } from "@/src/components/ui/button";
 import { supabase, supabaseConfigured } from "@/src/lib/supabaseClient";
+import { docsNav } from "@/src/docs/docsContent";
 
 type SidebarProps = {
   userEmail?: string | null;
@@ -70,7 +71,7 @@ export function Sidebar({
           <Logo showMark={false} />
         </div>
 
-        <div className="mt-8 flex flex-1 flex-col gap-6 px-5">
+        <div className="mt-8 flex min-h-0 flex-1 flex-col gap-6 px-5">
           <div className="pt-2">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/70">
               Navigation
@@ -113,21 +114,56 @@ export function Sidebar({
           </Link>
         </div>
 
-          <div className="rounded-2xl border border-white/20 bg-white/10 p-4">
-            <p className="text-sm font-semibold text-white">
-              Billing coming soon
-            </p>
-            <p className="mt-2 text-xs text-white/70">
-              Payments are being enabled. You can use QuackNinja free in the meantime.
-            </p>
-            <button
-              className="mt-4 w-full cursor-not-allowed rounded-lg bg-white/20 px-3 py-2 text-xs font-semibold text-white/70"
-              type="button"
-              disabled
-            >
-              Pro — coming soon
-            </button>
-          </div>
+          {isDocs ? (
+            <div className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-white/20 bg-white/10 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/70">
+                Docs
+              </p>
+              <div className="mt-4 space-y-5">
+                {docsNav.map((group) => (
+                  <div key={group.label}>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/60">
+                      {group.label}
+                    </p>
+                    <nav className="mt-2 space-y-1 text-sm">
+                      {group.items.map((item) => {
+                        const isActive = pathname === item.href;
+                        return (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            className={`block rounded-lg px-3 py-2 transition ${
+                              isActive
+                                ? "bg-white/15 font-semibold text-white"
+                                : "text-white/80 hover:bg-white/10"
+                            }`}
+                          >
+                            {item.title}
+                          </Link>
+                        );
+                      })}
+                    </nav>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-white/20 bg-white/10 p-4">
+              <p className="text-sm font-semibold text-white">
+                Billing coming soon
+              </p>
+              <p className="mt-2 text-xs text-white/70">
+                Payments are being enabled. You can use QuackNinja free in the meantime.
+              </p>
+              <button
+                className="mt-4 w-full cursor-not-allowed rounded-lg bg-white/20 px-3 py-2 text-xs font-semibold text-white/70"
+                type="button"
+                disabled
+              >
+                Pro — coming soon
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="border-t border-white/10 px-5 py-4">
@@ -142,13 +178,22 @@ export function Sidebar({
               <span className="text-sm font-semibold text-white">{planLabel}</span>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowLogout(true)}
-            className="mt-4 w-full cursor-pointer rounded-lg border border-white/20 px-3 py-2 text-xs font-semibold text-white/80 transition hover:bg-white/10"
-          >
-            Logout
-          </button>
+          {userEmail ? (
+            <button
+              type="button"
+              onClick={() => setShowLogout(true)}
+              className="mt-4 w-full cursor-pointer rounded-lg border border-white/20 px-3 py-2 text-xs font-semibold text-white/80 transition hover:bg-white/10"
+            >
+              Logout
+            </button>
+          ) : (
+            <Link
+              href="/auth/sign-in"
+              className="mt-4 block w-full rounded-lg border border-white/20 px-3 py-2 text-center text-xs font-semibold text-white/80 transition hover:bg-white/10"
+            >
+              Sign in
+            </Link>
+          )}
         </div>
       </aside>
       {modal}
