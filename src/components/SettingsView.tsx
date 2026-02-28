@@ -73,31 +73,33 @@ export function SettingsView() {
       <div className="pointer-events-none absolute -left-24 top-10 h-64 w-64 rounded-full bg-[#09CEA4]/10 blur-3xl" />
       <div className="pointer-events-none absolute right-0 top-32 h-72 w-72 rounded-full bg-[#5BA9FF]/10 blur-3xl" />
 
-      <div className="qn-container relative">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#09A483]">
-              Settings
-            </p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#0B1220] md:text-4xl">
-              Plan &amp; Usage
-            </h1>
-            <p className="mt-2 text-sm text-[#5B6B82]">
-              Manage your plan, limits, and saved queries.
-            </p>
-          </div>
-          <div className="flex flex-col items-start gap-3">
-            <button
-              type="button"
-              disabled
-              className={buttonClassName({
-                variant: "primary",
-                size: "md",
-                className: "cursor-not-allowed opacity-80",
-              })}
-            >
-              Billing not live yet
-            </button>
+      <div className="relative mx-auto w-full max-w-[1400px] px-6 lg:px-10">
+        <div className="rounded-2xl border border-slate-200/60 bg-white/80 p-6 shadow-[0_20px_60px_rgba(2,6,23,0.08)]">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#09A483]">
+                Settings
+              </p>
+              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#0B1220] md:text-4xl">
+                Plan &amp; Usage
+              </h1>
+              <p className="mt-2 text-sm text-[#5B6B82]">
+                Manage your plan, limits, and saved queries.
+              </p>
+            </div>
+            <div className="flex flex-col items-start gap-3">
+              <button
+                type="button"
+                disabled
+                className={buttonClassName({
+                  variant: "primary",
+                  size: "md",
+                  className: "cursor-not-allowed opacity-80",
+                })}
+              >
+                Billing not live yet
+              </button>
+            </div>
           </div>
         </div>
 
