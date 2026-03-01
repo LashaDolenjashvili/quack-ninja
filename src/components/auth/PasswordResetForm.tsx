@@ -23,8 +23,13 @@ export function PasswordResetForm() {
         setError("Supabase is not configured. Check env vars.");
         return;
       }
+      const redirectTo =
+        typeof window !== "undefined"
+          ? `${window.location.origin}/auth/reset-password`
+          : undefined;
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(
-        email
+        email,
+        redirectTo ? { redirectTo } : undefined
       );
       if (resetError) {
         throw resetError;
