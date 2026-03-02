@@ -45,7 +45,7 @@ export function ConfirmEmailNotice({ notice, email }: ConfirmEmailNoticeProps) {
         <p className="text-sm text-[color:var(--text-primary)]">
           {message}{" "}
           <span className="text-[color:var(--text-secondary)]">
-            Check spam/promotions if you don't see it.
+            Check spam/promotions if you don&apos;t see it.
           </span>
         </p>
         <div>

@@ -20,7 +20,7 @@ async function fetchProfile(): Promise<BillingProfile | null> {
   }
   const { data } = await supabase
     .from("profiles")
-    .select("id, email, plan, is_admin")
+    .select("id, email, plan, is_admin, billing_role")
     .eq("id", user.id)
     .maybeSingle<BillingProfile>();
   const plan = parsePlanTier(data?.plan);
@@ -28,6 +28,7 @@ async function fetchProfile(): Promise<BillingProfile | null> {
     id: user.id,
     email: data?.email ?? user.email ?? null,
     plan,
+    billing_role: data?.billing_role ?? "none",
     is_admin: Boolean(data?.is_admin),
   };
 }
