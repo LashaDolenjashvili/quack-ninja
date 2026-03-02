@@ -5,10 +5,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase, supabaseConfigured } from "@/src/lib/supabaseClient";
 import { logClientError } from "@/src/lib/logger";
 import type { Entitlements, PlanTier } from "@/src/lib/entitlements";
+import type { BillingRole } from "@/src/billing/types";
 
 export type EntitlementsResponse = {
   plan: PlanTier;
   effective_plan?: PlanTier;
+  billing_role?: BillingRole;
   limits: Entitlements;
   is_trial_active: boolean;
   trial_started_at: string | null;

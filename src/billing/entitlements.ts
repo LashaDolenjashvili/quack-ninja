@@ -55,7 +55,8 @@ export function resolveEntitlements({
 
   const profilePlan: Plan = profile?.plan === "pro" ? "pro" : "free";
   const effectivePlan: Plan =
-    profilePlan === "pro" && (hasActiveSub || subscription === null)
+    hasActiveSub ||
+    (profilePlan === "pro" && subscription === null)
       ? "pro"
       : trialActive
         ? "pro"

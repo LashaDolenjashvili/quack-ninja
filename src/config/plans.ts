@@ -1,12 +1,12 @@
 const MB = 1024 * 1024;
 const GB = 1024 * 1024 * 1024;
 
-export const BILLING_ENABLED = false;
+export const BILLING_ENABLED = true;
 export const BILLING_EARLY_ACCESS = !BILLING_ENABLED;
 export const BILLING_COMING_SOON = !BILLING_ENABLED;
-export const TRIAL_ENABLED_CLIENT = false;
-export const TRIAL_ENABLED_SERVER = false;
-export const TRIAL_ENABLED = false;
+export const TRIAL_ENABLED_CLIENT = true;
+export const TRIAL_ENABLED_SERVER = true;
+export const TRIAL_ENABLED = true;
 
 export const TRIAL_DAYS = 7;
 
