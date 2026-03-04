@@ -74,104 +74,112 @@ function pickCurrentOwnerSubscription(rows: ActiveSubscriptionRow[]) {
 }
 
 export async function POST(request: Request) {
-  const authHeader = request.headers.get("authorization") ?? "";
-  const token = authHeader.startsWith("Bearer ")
-    ? authHeader.slice("Bearer ".length)
-    : null;
+  try {
+    const authHeader = request.headers.get("authorization") ?? "";
+    const token = authHeader.startsWith("Bearer ")
+      ? authHeader.slice("Bearer ".length)
+      : null;
 
-  if (!token) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-  }
-  if (!supabaseAdminConfigured) {
-    return NextResponse.json(
-      { error: "Server not configured for billing." },
-      { status: 500 }
-    );
-  }
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
+    if (!supabaseAdminConfigured) {
+      return NextResponse.json(
+        { error: "Server not configured for billing." },
+        { status: 500 }
+      );
+    }
 
-  const payload = parsePayload(await request.json().catch(() => null));
-  if (!payload || !isPaidPlanCode(payload.target_plan_code)) {
-    return NextResponse.json({ error: "Invalid plan." }, { status: 400 });
-  }
-  const targetPlanCode = payload.target_plan_code;
+    const payload = parsePayload(await request.json().catch(() => null));
+    if (!payload || !isPaidPlanCode(payload.target_plan_code)) {
+      return NextResponse.json({ error: "Invalid plan." }, { status: 400 });
+    }
+    const targetPlanCode = payload.target_plan_code;
 
-  const supabase = getSupabaseAdmin();
-  const { data: authData, error: authError } = await supabase.auth.getUser(token);
-  if (authError || !authData.user) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-  }
+    const supabase = getSupabaseAdmin();
+    const { data: authData, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !authData.user) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
 
-  const { data: ownerSubscriptions } = await supabase
-    .from("subscriptions")
-    .select(
-      "id, provider, provider_subscription_id, plan_code, status, current_period_end, cancel_at_period_end, auto_renew"
-    )
-    .eq("owner_user_id", authData.user.id)
-    .returns<ActiveSubscriptionRow[]>();
+    const { data: ownerSubscriptions } = await supabase
+      .from("subscriptions")
+      .select(
+        "id, provider, provider_subscription_id, plan_code, status, current_period_end, cancel_at_period_end, auto_renew"
+      )
+      .eq("owner_user_id", authData.user.id)
+      .returns<ActiveSubscriptionRow[]>();
 
-  const currentSubscription = pickCurrentOwnerSubscription(ownerSubscriptions ?? []);
+    const currentSubscription = pickCurrentOwnerSubscription(ownerSubscriptions ?? []);
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("trial_ends_at")
-    .eq("id", authData.user.id)
-    .maybeSingle<{ trial_ends_at: string | null }>();
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("trial_ends_at")
+      .eq("id", authData.user.id)
+      .maybeSingle<{ trial_ends_at: string | null }>();
 
-  const trialEndsAt = profile?.trial_ends_at ?? null;
-  const trialRemainingSeconds = trialEndsAt
-    ? Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / 1000))
-    : 0;
-  const trialActive = Boolean(trialEndsAt && trialRemainingSeconds > 0);
+    const trialEndsAt = profile?.trial_ends_at ?? null;
+    const trialRemainingSeconds = trialEndsAt
+      ? Math.max(0, Math.ceil((new Date(trialEndsAt).getTime() - Date.now()) / 1000))
+      : 0;
+    const trialActive = Boolean(trialEndsAt && trialRemainingSeconds > 0);
 
-  const createTransaction = async () => {
+    const createTransaction = async () => {
       const transactionId = await createPaddleTransaction({
+        userId: authData.user.id,
+        email: authData.user.email ?? null,
+        planCode: targetPlanCode,
+        autoRenew: payload.auto_renew,
+        trialEndsAt: trialActive ? trialEndsAt : null,
+        trialRemainingSeconds,
+      });
+      return NextResponse.json({
+        mode: "checkout",
+        transaction_id: transactionId,
+        message: trialActive
+          ? "Trial remains visible in the app until it ends, but the paid subscription starts immediately after checkout."
+          : "Checkout ready.",
+      });
+    };
+
+    if (!currentSubscription || currentSubscription.provider !== "paddle") {
+      return createTransaction();
+    }
+
+    const currentPlan = currentSubscription.plan_code;
+    const targetPlan = targetPlanCode;
+
+    if (currentPlan === targetPlan) {
+      if (
+        currentSubscription.status !== "active" ||
+        !isInAccessWindow(currentSubscription)
+      ) {
+        return createTransaction();
+      }
+
+      return NextResponse.json(
+        { error: "This plan is already your current active plan." },
+        { status: 409 }
+      );
+    }
+
+    const switchTransactionId = await createPaddleTransaction({
       userId: authData.user.id,
       email: authData.user.email ?? null,
-      planCode: targetPlanCode,
+      planCode: targetPlan,
       autoRenew: payload.auto_renew,
       trialEndsAt: trialActive ? trialEndsAt : null,
       trialRemainingSeconds,
     });
+
     return NextResponse.json({
-      mode: "checkout",
-      transaction_id: transactionId,
-      message: trialActive
-        ? "Trial remains visible in the app until it ends, but the paid subscription starts immediately after checkout."
-        : "Checkout ready.",
+      mode: "switch_required",
+      transaction_id: switchTransactionId,
+      message: `Switching from ${currentPlan.replace("_", " ")} to ${targetPlan.replace("_", " ")} requires canceling the current plan first.`,
     });
-  };
-
-  if (!currentSubscription || currentSubscription.provider !== "paddle") {
-    return createTransaction();
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Unable to prepare checkout.";
+    return NextResponse.json({ error: message }, { status: 502 });
   }
-
-  const currentPlan = currentSubscription.plan_code;
-  const targetPlan = targetPlanCode;
-
-  if (currentPlan === targetPlan) {
-    if (currentSubscription.status !== "active" || !isInAccessWindow(currentSubscription)) {
-      return createTransaction();
-    }
-
-    return NextResponse.json(
-      { error: "This plan is already your current active plan." },
-      { status: 409 }
-    );
-  }
-
-  const switchTransactionId = await createPaddleTransaction({
-    userId: authData.user.id,
-    email: authData.user.email ?? null,
-    planCode: targetPlan,
-    autoRenew: payload.auto_renew,
-    trialEndsAt: trialActive ? trialEndsAt : null,
-    trialRemainingSeconds,
-  });
-
-  return NextResponse.json({
-    mode: "switch_required",
-    transaction_id: switchTransactionId,
-    message:
-      `Switching from ${currentPlan.replace("_", " ")} to ${targetPlan.replace("_", " ")} requires canceling the current plan first.`,
-  });
 }
