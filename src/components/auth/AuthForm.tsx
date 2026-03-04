@@ -22,6 +22,9 @@ export function AuthForm({ mode }: AuthFormProps) {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  const duplicateEmailMessage =
+    "An account with this email already exists. Sign in instead or reset your password.";
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
@@ -40,6 +43,11 @@ export function AuthForm({ mode }: AuthFormProps) {
         });
         if (signUpError) {
           throw signUpError;
+        }
+        const signUpReturnedExistingUser =
+          Array.isArray(data.user?.identities) && data.user.identities.length === 0;
+        if (signUpReturnedExistingUser) {
+          throw new Error(duplicateEmailMessage);
         }
         if (data.user) {
           await supabase.from("profiles").upsert({
@@ -67,9 +75,16 @@ export function AuthForm({ mode }: AuthFormProps) {
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Authentication failed.";
+      const lowerMessage = message.toLowerCase();
       const cleanMessage =
         mode === "sign-in" && message.toLowerCase().includes("invalid")
           ? "Email or password is incorrect."
+          : mode === "sign-up" &&
+              (lowerMessage.includes("already registered") ||
+                lowerMessage.includes("already exists") ||
+                lowerMessage.includes("already been registered") ||
+                lowerMessage.includes("user already registered"))
+            ? duplicateEmailMessage
           : message;
       logClientError(err, "Auth failed");
       setError(cleanMessage);
