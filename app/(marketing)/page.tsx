@@ -40,7 +40,7 @@ const faqs = [
   {
     question: "Can I join multiple files?",
     answer:
-      "Yes — join exports in seconds (customers ↔ transactions ↔ payments). DuckDB handles joins, group-bys, and filters locally.",
+      "Yes — join files in seconds (customers ↔ transactions ↔ payments). DuckDB handles joins, group-bys, and filters locally.",
   },
   {
     question: "Does QuackNinja support window functions and CTEs?",
@@ -50,7 +50,7 @@ const faqs = [
   {
     question: "Why are there limits on file size / rows?",
     answer:
-      "Because everything runs in your browser. Limits keep performance fast and stable. Pro raises the caps for bigger exports.",
+      "Because everything runs in your browser. Limits keep performance fast and stable. Paid plans raise the caps for bigger files and exports.",
   },
   {
     question: "Can I export results?",
@@ -168,7 +168,7 @@ export default function MarketingPage() {
             <div className="flex flex-col gap-6">
               <div className="flex flex-wrap items-center gap-3">
                 <span className="inline-flex w-fit items-center gap-2 rounded-full border border-white/30 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-white/80">
-                  Made for quick checks on real exports
+                  Made for quick checks on real files
                 </span>
                 <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#09A483]">
                   Powered by DuckDB
@@ -189,8 +189,8 @@ export default function MarketingPage() {
                 <HeroCta />
               </div>
               <p className="text-xs font-semibold text-white/70">
-                Payments are offline for now — Pro features are unlocked for
-                early users in exchange for feedback.
+                Start free, then switch to a paid plan when you need higher
+                limits or team access.
               </p>
 
               <Card variant="glass" className="rounded-3xl p-8">
@@ -202,10 +202,10 @@ export default function MarketingPage() {
                   className="mt-4 text-[17px] leading-7"
                   items={[
                     "Runs on your computer (files stay local)",
-                    "Join exports in seconds (customers ↔ transactions)",
+                    "Join files in seconds (customers ↔ transactions)",
                     "Find duplicates, missing values, and odd rows",
                     "Export a clean CSV for stakeholders",
-                    "Works even when exports are messy",
+                    "Works even when files are messy",
                   ]}
                 />
               </Card>
@@ -215,12 +215,11 @@ export default function MarketingPage() {
       </div>
 
       <HowItWorks />
-      <QuickWins />
+      <PricingSection />
       <PrivacyTrust />
+      <QuickWins />
 
       <ExampleQueriesSection />
-
-      <PricingSection />
 
       <Section variant="light" id="faq">
         <Container className="flex flex-col gap-12">

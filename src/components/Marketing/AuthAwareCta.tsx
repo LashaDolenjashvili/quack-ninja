@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
 import { OpenConsoleButton } from "@/src/components/Marketing/OpenConsoleButton";
 import { cx } from "@/src/components/ui/classNames";
 import { useAuth } from "@/src/components/auth/AuthProvider";
@@ -10,6 +9,7 @@ type AuthAwareCtaProps = {
   size?: "sm" | "md" | "lg";
   className?: string;
   showSecondary?: boolean;
+  signedOutLabel?: string;
   signedInExtras?: React.ReactNode;
   signedOutExtras?: React.ReactNode;
 };
@@ -18,13 +18,12 @@ export function AuthAwareCta({
   size = "md",
   className,
   showSecondary = true,
+  signedOutLabel = "Start free",
   signedInExtras,
   signedOutExtras,
 }: AuthAwareCtaProps) {
   const { user, loading } = useAuth();
   const status = loading ? "loading" : user ? "in" : "out";
-
-  const signedOutLabel = useMemo(() => "Start free", []);
 
   if (status === "loading") {
     return (

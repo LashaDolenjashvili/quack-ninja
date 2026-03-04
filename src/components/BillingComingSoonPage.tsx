@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { BillingComingSoonNotice } from "@/src/components/BillingComingSoonNotice";
-import { Button } from "@/src/components/ui/button";
+import { buttonClassName } from "@/src/components/ui/button";
 
 export function BillingComingSoonPage({
   backHref = "/app/console",
@@ -14,15 +14,18 @@ export function BillingComingSoonPage({
       <BillingComingSoonNotice />
       <div className="rounded-2xl border border-[#E6EEF7] bg-white/90 p-6 shadow-[0_18px_48px_rgba(11,18,32,0.08)]">
         <h1 className="text-2xl font-semibold text-[#0B1220]">
-          Billing coming soon
+          Choose a paid plan
         </h1>
         <p className="mt-2 text-sm text-[#5B6B82]">
-          Payments are being enabled. Please check back soon.
+          Billing is live. Review the current plans or go back to the Console.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
-          <Button type="button" disabled className="cursor-not-allowed opacity-80">
-            Pro — coming soon
-          </Button>
+          <Link
+            href="/pricing"
+            className={buttonClassName({ variant: "primary" })}
+          >
+            View pricing
+          </Link>
           <Link
             href={backHref}
             className="inline-flex items-center justify-center rounded-lg border border-[#003C79] px-4 py-2 text-sm font-semibold text-[#003C79]"

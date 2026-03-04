@@ -15,6 +15,10 @@ export type SubscriptionStatus =
   | "past_due"
   | "canceled";
 
+export type RenewalMode = "auto" | "end_of_term";
+export type ChangeType = "upgrade" | "downgrade" | "switch" | "renewal";
+export type AccessSource = "subscription" | "complimentary" | "trial" | "free";
+
 export type BillingProfile = {
   id: string;
   email: string | null;
@@ -43,4 +47,9 @@ export type SubscriptionRecord = {
   status: SubscriptionStatus;
   current_period_end: string | null;
   cancel_at_period_end: boolean;
+  auto_renew: boolean;
+  renewal_mode: RenewalMode;
+  pending_plan_code?: Exclude<PlanCode, "free"> | null;
+  change_effective_at?: string | null;
+  change_type?: ChangeType | null;
 };

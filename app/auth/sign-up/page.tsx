@@ -17,11 +17,11 @@ export default function SignUpPage() {
       <AuthPageLayout
         title="Sign up"
         subtitle="Create your QuackNinja account"
-        badge="Early access"
-        subhead="Pro features are unlocked during early access — your feedback helps us ship v1."
+        badge="Free trial"
+        subhead="Start with a free trial of Pro limits. Move to a paid plan only when you need ongoing access."
         helper={
           <div className="space-y-1 text-sm text-[color:var(--text-secondary)]">
-            <p>No payment details required.</p>
+            <p>No payment details required to get started.</p>
           </div>
         }
       >

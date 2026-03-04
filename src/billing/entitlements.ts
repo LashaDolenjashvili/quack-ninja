@@ -53,14 +53,8 @@ export function resolveEntitlements({
         new Date(subscription.current_period_end).getTime() > nowMs)
   );
 
-  const profilePlan: Plan = profile?.plan === "pro" ? "pro" : "free";
   const effectivePlan: Plan =
-    hasActiveSub ||
-    (profilePlan === "pro" && subscription === null)
-      ? "pro"
-      : trialActive
-        ? "pro"
-        : "free";
+    hasActiveSub || trialActive ? "pro" : "free";
 
   return {
     plan: effectivePlan,

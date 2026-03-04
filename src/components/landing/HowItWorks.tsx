@@ -1,3 +1,4 @@
+import { AuthAwareCta } from "@/src/components/Marketing/AuthAwareCta";
 import { cx } from "@/src/components/ui/classNames";
 import { Section } from "@/src/components/ui/Section";
 import { Container } from "@/src/components/ui/Container";
@@ -6,18 +7,18 @@ import { SQL_DIALECT_LABEL } from "@/src/lib/sqlDialect";
 const steps = [
   {
     step: "01",
-    title: "Attach exports",
-    body: "Import CSV, Excel (.xlsx), and Parquet. Add multiple files per session.",
+    title: "Drop in your files",
+    body: "Import CSV, Excel (.xlsx), or Parquet — add multiple files per session.",
   },
   {
     step: "02",
-    title: "Ask questions with SQL",
-    body: "Filter, join, group, and validate data fast — no scripts required.",
+    title: "Query with SQL",
+    body: "Filter, join, group, and validate fast — without setting up a database.",
   },
   {
     step: "03",
-    title: "Export clean results",
-    body: "Download a share-ready CSV your team can trust.",
+    title: "Export & share",
+    body: "Download a clean, share-ready CSV your team can trust.",
   },
 ];
 
@@ -29,16 +30,25 @@ export function HowItWorks() {
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#09A483]">
             How it works
           </p>
-          <div className="flex flex-col gap-3">
-            <h2 className="qn-heading">
-              SQL in your browser — without the setup
-            </h2>
-            <p className="qn-subheading max-w-2xl">
-              Drop in exports, run familiar SQL, and share clean results in minutes.
-            </p>
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#09A483]">
-              Powered by {SQL_DIALECT_LABEL}
-            </p>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div className="flex flex-col gap-3">
+              <h2 className="qn-heading">
+                SQL on your files — instantly, in the browser
+              </h2>
+              <p className="qn-subheading max-w-2xl">
+                Upload CSV/Excel/Parquet, run familiar SQL, export clean
+                results for your team in minutes.
+              </p>
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#09A483]">
+                Powered by {SQL_DIALECT_LABEL}
+              </p>
+            </div>
+            <AuthAwareCta
+              size="lg"
+              showSecondary={false}
+              signedOutLabel="Try it free"
+              className="justify-start lg:justify-end"
+            />
           </div>
         </div>
 

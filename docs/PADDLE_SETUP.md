@@ -13,6 +13,9 @@ The simplest and safest setup is:
 - quantity kept at `1`
 
 Do not model team seats with Paddle quantity. Seat limits are enforced in QuackNinja, not in Paddle.
+Auto-renew is off by default in the product, so QuackNinja will schedule
+non-renewing subscriptions to end at the close of the current paid term unless a
+customer explicitly opts into renewal during checkout.
 
 ### Commercial plans to create
 
@@ -48,10 +51,10 @@ Repeat these steps four times, once for each plan above.
 11. Save the price.
 12. Copy the generated Paddle price ID for that monthly price.
 13. Put that price ID into the matching app environment variable:
-   - `PADDLE_PRICE_ID_INDIVIDUAL_MONTHLY`
-   - `PADDLE_PRICE_ID_TEAM_5_MONTHLY`
-   - `PADDLE_PRICE_ID_TEAM_10_MONTHLY`
-   - `PADDLE_PRICE_ID_TEAM_UNLIMITED_MONTHLY`
+   - `NEXT_PUBLIC_PADDLE_PRICE_ID_INDIVIDUAL_MONTHLY`
+   - `NEXT_PUBLIC_PADDLE_PRICE_ID_TEAM_5_MONTHLY`
+   - `NEXT_PUBLIC_PADDLE_PRICE_ID_TEAM_10_MONTHLY`
+   - `NEXT_PUBLIC_PADDLE_PRICE_ID_TEAM_UNLIMITED_MONTHLY`
 
 ### Recommended naming convention
 
@@ -79,15 +82,18 @@ For each plan:
 - Tax handling: use Paddle defaults as merchant of record
 
 QuackNinja already has an app-managed 7-day trial. Do not configure a separate Paddle trial for these plans or your entitlement logic will become inconsistent.
+If a customer upgrades during the trial, QuackNinja keeps showing the trial in
+the UI until it ends, but the paid subscription starts immediately after
+checkout.
 
 ### What QuackNinja expects from the catalog
 
 The application maps each plan to a single monthly Paddle price ID:
 
-1. `individual` -> `PADDLE_PRICE_ID_INDIVIDUAL_MONTHLY`
-2. `team_5` -> `PADDLE_PRICE_ID_TEAM_5_MONTHLY`
-3. `team_10` -> `PADDLE_PRICE_ID_TEAM_10_MONTHLY`
-4. `team_unlimited` -> `PADDLE_PRICE_ID_TEAM_UNLIMITED_MONTHLY`
+1. `individual` -> `NEXT_PUBLIC_PADDLE_PRICE_ID_INDIVIDUAL_MONTHLY`
+2. `team_5` -> `NEXT_PUBLIC_PADDLE_PRICE_ID_TEAM_5_MONTHLY`
+3. `team_10` -> `NEXT_PUBLIC_PADDLE_PRICE_ID_TEAM_10_MONTHLY`
+4. `team_unlimited` -> `NEXT_PUBLIC_PADDLE_PRICE_ID_TEAM_UNLIMITED_MONTHLY`
 
 If one of these env vars is missing, checkout for that plan will fail at runtime.
 
@@ -178,17 +184,31 @@ Set these for the Next.js app:
 
 - `PADDLE_API_KEY`
 - `PADDLE_ENV=sandbox|production`
-- `PADDLE_PRICE_ID_INDIVIDUAL_MONTHLY`
-- `PADDLE_PRICE_ID_TEAM_5_MONTHLY`
-- `PADDLE_PRICE_ID_TEAM_10_MONTHLY`
-- `PADDLE_PRICE_ID_TEAM_UNLIMITED_MONTHLY`
+- `NEXT_PUBLIC_PADDLE_CLIENT_TOKEN`
+- `NEXT_PUBLIC_PADDLE_PRICE_ID_INDIVIDUAL_MONTHLY`
+- `NEXT_PUBLIC_PADDLE_PRICE_ID_TEAM_5_MONTHLY`
+- `NEXT_PUBLIC_PADDLE_PRICE_ID_TEAM_10_MONTHLY`
+- `NEXT_PUBLIC_PADDLE_PRICE_ID_TEAM_UNLIMITED_MONTHLY`
 - `NEXT_PUBLIC_APP_URL`
+
+For the current QuackNinja checkout flow, the browser uses Paddle.js with:
+
+- `NEXT_PUBLIC_PADDLE_CLIENT_TOKEN`
+- `NEXT_PUBLIC_PADDLE_PRICE_ID_*`
+
+QuackNinja also prepares checkout server-side, so `PADDLE_API_KEY` is required in
+the Next.js app for transaction creation.
 
 Set these in Supabase Edge Function secrets:
 
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `PADDLE_WEBHOOK_SECRET`
+- `PADDLE_API_KEY`
+- `PADDLE_PRICE_ID_INDIVIDUAL_MONTHLY`
+- `PADDLE_PRICE_ID_TEAM_5_MONTHLY`
+- `PADDLE_PRICE_ID_TEAM_10_MONTHLY`
+- `PADDLE_PRICE_ID_TEAM_UNLIMITED_MONTHLY`
 
 Optional:
 
@@ -200,14 +220,16 @@ Optional:
 ```bash
 PADDLE_ENV=sandbox
 PADDLE_API_KEY=your_paddle_api_key
-PADDLE_PRICE_ID_INDIVIDUAL_MONTHLY=pri_xxx_individual
-PADDLE_PRICE_ID_TEAM_5_MONTHLY=pri_xxx_team5
-PADDLE_PRICE_ID_TEAM_10_MONTHLY=pri_xxx_team10
-PADDLE_PRICE_ID_TEAM_UNLIMITED_MONTHLY=pri_xxx_teamunlimited
+NEXT_PUBLIC_PADDLE_CLIENT_TOKEN=test_xxx_client_token
+NEXT_PUBLIC_PADDLE_PRICE_ID_INDIVIDUAL_MONTHLY=pri_xxx_individual
+NEXT_PUBLIC_PADDLE_PRICE_ID_TEAM_5_MONTHLY=pri_xxx_team5
+NEXT_PUBLIC_PADDLE_PRICE_ID_TEAM_10_MONTHLY=pri_xxx_team10
+NEXT_PUBLIC_PADDLE_PRICE_ID_TEAM_UNLIMITED_MONTHLY=pri_xxx_teamunlimited
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
 Use the real Paddle price IDs from the monthly recurring prices you created. Do not use product IDs in these variables.
+The `NEXT_PUBLIC_PADDLE_CLIENT_TOKEN` is the client-side Paddle token used by Paddle.js checkout.
 
 ## Return URLs
 
@@ -222,10 +244,16 @@ Keep these on your allowed domain list in Paddle.
 
 When a user clicks a paid plan in QuackNinja:
 
-1. The app calls `app/api/billing/checkout/route.ts`.
-2. The server maps the selected plan to one of the four env-backed Paddle price IDs.
-3. The server creates a Paddle hosted checkout.
-4. Paddle redirects the customer back to:
+1. The app opens an in-product checkout options modal.
+2. The user confirms whether auto-renew should be on (default off).
+3. The app calls the server to create a Paddle transaction.
+4. The server attaches:
+   - `custom_data.user_id`
+   - `custom_data.plan_code`
+   - `custom_data.auto_renew`
+   - `custom_data.trial_ends_at`
+5. The browser opens Paddle.js using the returned transaction id.
+6. Paddle redirects the customer back to:
    - success: `/app/settings?billing=success`
    - cancel: `/pricing?billing=canceled`
 
@@ -243,8 +271,11 @@ Do not start with production.
 4. Add the sandbox webhook destination.
 5. Store the sandbox webhook secret in Supabase.
 6. Set `PADDLE_ENV=sandbox`.
-7. Fill the four `PADDLE_PRICE_ID_*` env vars with sandbox price IDs.
-8. Test purchases for `Individual` and `Team 5`.
+7. Fill the four `NEXT_PUBLIC_PADDLE_PRICE_ID_*` env vars with sandbox price IDs.
+8. Add the sandbox `PADDLE_API_KEY` to both:
+   - your Next.js app env
+   - Supabase Edge Function secrets
+9. Test purchases for `Individual` and `Team 5`.
 
 ### Production checklist
 
@@ -253,9 +284,44 @@ Do not start with production.
 3. Reapply the same metadata.
 4. Add the production webhook destination.
 5. Replace the webhook secret in the production Supabase project.
-6. Replace the four `PADDLE_PRICE_ID_*` env vars with production price IDs.
+6. Replace the four `NEXT_PUBLIC_PADDLE_PRICE_ID_*` env vars with production price IDs.
 7. Set `PADDLE_ENV=production`.
-8. Run a real low-risk transaction and confirm the webhook sync.
+8. Add the production `PADDLE_API_KEY` to both:
+   - your Next.js app env
+   - Supabase Edge Function secrets
+9. Run a real low-risk transaction and confirm the webhook sync.
+
+## Subscription behavior reference
+
+### Individual
+
+- One paid user
+- Full Pro limits
+- Auto-renew off by default unless the customer enables it in checkout
+
+### Team 5
+
+- One owner plus up to four additional members
+- Every assigned member gets paid access
+- Auto-renew off by default
+
+### Team 10
+
+- One owner plus up to nine additional members
+- Auto-renew off by default
+
+### Team Unlimited
+
+- One owner plus unlimited additional members
+- Auto-renew off by default
+
+### Trial to paid transition
+
+- The free trial remains visible in the product until it ends
+- If a customer upgrades during the trial, the paid subscription starts
+  immediately after checkout
+- The billing UI should make that distinction explicit so customers are not
+  promised delayed billing
 
 ## Validation checklist
 
@@ -272,6 +338,6 @@ Do not start with production.
 1. Creating one-time prices instead of recurring monthly prices
 2. Using Paddle quantity to represent seat count
 3. Enabling a Paddle trial on top of the app-managed trial
-4. Putting product IDs into `PADDLE_PRICE_ID_*` env vars
+4. Putting product IDs into `NEXT_PUBLIC_PADDLE_PRICE_ID_*` env vars
 5. Forgetting to copy the webhook signing secret into Supabase
 6. Testing production before webhook syncing is verified in sandbox

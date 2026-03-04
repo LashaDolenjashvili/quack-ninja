@@ -69,10 +69,22 @@ export function getSeatLimitForPlanCode(planCode: PaidPlanCode): number | null {
 
 export function getPaddlePriceIdForPlanCode(planCode: PaidPlanCode) {
   const mapping: Record<PaidPlanCode, string> = {
-    individual: process.env.PADDLE_PRICE_ID_INDIVIDUAL_MONTHLY ?? "",
-    team_5: process.env.PADDLE_PRICE_ID_TEAM_5_MONTHLY ?? "",
-    team_10: process.env.PADDLE_PRICE_ID_TEAM_10_MONTHLY ?? "",
-    team_unlimited: process.env.PADDLE_PRICE_ID_TEAM_UNLIMITED_MONTHLY ?? "",
+    individual:
+      process.env.PADDLE_PRICE_ID_INDIVIDUAL_MONTHLY ??
+      process.env.NEXT_PUBLIC_PADDLE_PRICE_ID_INDIVIDUAL_MONTHLY ??
+      "",
+    team_5:
+      process.env.PADDLE_PRICE_ID_TEAM_5_MONTHLY ??
+      process.env.NEXT_PUBLIC_PADDLE_PRICE_ID_TEAM_5_MONTHLY ??
+      "",
+    team_10:
+      process.env.PADDLE_PRICE_ID_TEAM_10_MONTHLY ??
+      process.env.NEXT_PUBLIC_PADDLE_PRICE_ID_TEAM_10_MONTHLY ??
+      "",
+    team_unlimited:
+      process.env.PADDLE_PRICE_ID_TEAM_UNLIMITED_MONTHLY ??
+      process.env.NEXT_PUBLIC_PADDLE_PRICE_ID_TEAM_UNLIMITED_MONTHLY ??
+      "",
   };
   return mapping[planCode];
 }

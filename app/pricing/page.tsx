@@ -6,7 +6,7 @@ import { Footer } from "@/src/components/layout/Footer";
 export const metadata: Metadata = {
   title: "Pricing • QuackNinja",
   description:
-    "Simple plans that scale with your data. Start free and upgrade for bigger exports.",
+    "Simple plans that scale with your data. Start free, then switch to a paid plan when you need larger limits, exports, or team access.",
   alternates: {
     canonical: "https://www.quackninja.com/pricing",
   },

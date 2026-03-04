@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { Button } from "@/src/components/ui/button";
+import { buttonClassName } from "@/src/components/ui/button";
 import {
   ModalContent,
   ModalFooter,
@@ -29,13 +31,15 @@ export function UpgradeModal({
   bulletsLabel,
   onClose,
   showUpgrade = true,
-  upgradeLabel = "Upgrade",
+  upgradeLabel = "View paid plans",
   upgradeHref,
   isAuthenticated = true,
 }: UpgradeModalProps) {
   if (!open) {
     return null;
   }
+
+  const targetHref = upgradeHref ?? (isAuthenticated ? "/app/settings" : "/pricing");
 
   return (
     <ModalOverlay>
@@ -61,18 +65,18 @@ export function UpgradeModal({
             Close
           </Button>
           {showUpgrade ? (
-            <Button
-              type="button"
-              disabled
-              className="cursor-not-allowed opacity-80"
+            <Link
+              href={targetHref}
+              className={buttonClassName({ variant: "primary" })}
             >
-              Pro — coming soon
-            </Button>
+              {upgradeLabel}
+            </Link>
           ) : null}
         </ModalFooter>
         {showUpgrade ? (
           <p className="mt-3 text-xs text-[#9AA9BE]">
-            Billing is being enabled. You can use QuackNinja free in the meantime.
+            Paid plans are live. Choose Individual or Team when you need more
+            capacity or managed team access.
           </p>
         ) : null}
       </ModalContent>

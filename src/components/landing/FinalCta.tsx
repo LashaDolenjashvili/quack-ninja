@@ -21,7 +21,8 @@ export function FinalCta() {
                 Get your first answer in under 2 minutes.
               </h2>
               <p className="max-w-2xl text-base text-slate-600 md:text-lg">
-                Billing is coming soon. You can use QuackNinja free in the meantime.
+                Start free, then switch to a paid plan when you need larger
+                limits or paid team access.
               </p>
             </div>
             <AuthAwareCta
@@ -30,7 +31,7 @@ export function FinalCta() {
               className="justify-start md:justify-end"
               signedInExtras={
                 <a
-                  href="#use-cases"
+                  href="#example-queries"
                   className="rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400"
                 >
                   See example usage
@@ -38,7 +39,7 @@ export function FinalCta() {
               }
               signedOutExtras={
                 <a
-                  href="#use-cases"
+                  href="#example-queries"
                   className="rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400"
                 >
                   See example usage

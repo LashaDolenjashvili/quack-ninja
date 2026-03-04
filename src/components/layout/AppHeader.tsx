@@ -13,7 +13,7 @@ type AppHeaderProps = {
 
 export function AppHeader({ variant = "landing" }: AppHeaderProps) {
   const { user, loading: authLoading } = useAuth();
-  const { plan, earlyAccess } = usePlan();
+  const { plan } = usePlan();
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
@@ -78,7 +78,7 @@ export function AppHeader({ variant = "landing" }: AppHeaderProps) {
           {status === "in" ? (
             <div className="flex items-center gap-3">
               <span className="rounded-full border border-white/30 px-3 py-1 text-xs font-semibold text-white">
-                {earlyAccess ? "Pro (Early Access)" : plan === "pro" ? "Pro" : "Free"}
+                {plan === "pro" ? "Pro" : "Free"}
               </span>
               {user?.email ? (
                 <span className="hidden max-w-[160px] truncate text-xs text-white/80 md:inline">
