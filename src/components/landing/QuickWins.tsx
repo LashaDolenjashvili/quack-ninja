@@ -8,7 +8,7 @@ const wins = [
     body: "Reconcile sums, fees, refunds, and balances.",
   },
   {
-    title: "Join exports",
+    title: "Join files",
     body: "Combine customers ↔ transactions ↔ payments.",
   },
   {
@@ -33,7 +33,7 @@ export function QuickWins() {
             What you can do in 5 minutes
           </p>
           <h2 className="qn-heading">
-            Quick wins on messy exports
+            Quick wins on messy files
           </h2>
           <p className="qn-subheading max-w-xl">
             Use QuackNinja when you just need an answer — fast — without spinning

@@ -6,6 +6,48 @@ import { getEntitlements } from "@/src/lib/entitlements";
 import { TRIAL_ENABLED_SERVER, TRIAL_DAYS, getTrialWindow } from "@/src/lib/trial";
 import { BILLING_COMING_SOON } from "@/src/config/plans";
 
+type OwnerSubscriptionRow = {
+  provider: "paddle" | "manual";
+  status: "active" | "inactive" | "past_due" | "canceled";
+  current_period_end: string | null;
+  created_at: string;
+};
+
+type EntitlementSubscription = {
+  status: "active" | "inactive" | "past_due" | "canceled";
+  current_period_end: string | null;
+};
+
+function inAccessWindow(currentPeriodEnd: string | null) {
+  return !currentPeriodEnd || new Date(currentPeriodEnd).getTime() > Date.now();
+}
+
+function rankOwnerSubscription(subscription: OwnerSubscriptionRow) {
+  const accessible = inAccessWindow(subscription.current_period_end);
+  if (subscription.provider === "paddle" && subscription.status === "active" && accessible) {
+    return 300;
+  }
+  if (subscription.provider === "manual" && subscription.status === "active" && accessible) {
+    return 250;
+  }
+  if (subscription.status === "active" && accessible) {
+    return 200;
+  }
+  return 0;
+}
+
+function pickBestOwnerSubscription(rows: OwnerSubscriptionRow[]) {
+  return [...rows]
+    .filter((row) => rankOwnerSubscription(row) >= 200)
+    .sort((a, b) => {
+    const rankDiff = rankOwnerSubscription(b) - rankOwnerSubscription(a);
+    if (rankDiff !== 0) {
+      return rankDiff;
+    }
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  })[0] ?? null;
+}
+
 export async function GET(request: Request) {
   const now = new Date();
   const authHeader = request.headers.get("authorization") ?? "";
@@ -105,14 +147,15 @@ export async function GET(request: Request) {
     profile = updated.data ?? profile;
   }
 
-  let subscriptionRole: BillingRole = (profile?.billing_role as BillingRole | undefined) ?? "none";
-  let { data: subscription } = await supabase
+  let subscriptionRole: BillingRole = "none";
+  const { data: ownerSubscriptions } = await supabase
     .from("subscriptions")
-    .select("status, current_period_end")
+    .select("provider, status, current_period_end, created_at")
     .eq("owner_user_id", authData.user.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .returns<OwnerSubscriptionRow[]>();
+
+  let subscription: EntitlementSubscription | null =
+    pickBestOwnerSubscription(ownerSubscriptions ?? []);
 
   if (subscription) {
     subscriptionRole = "owner";
@@ -128,7 +171,11 @@ export async function GET(request: Request) {
           current_period_end: string | null;
         };
       }>();
-    if (memberSubscription?.subscriptions) {
+    if (
+      memberSubscription?.subscriptions &&
+      memberSubscription.subscriptions.status === "active" &&
+      inAccessWindow(memberSubscription.subscriptions.current_period_end)
+    ) {
       subscription = memberSubscription.subscriptions;
       subscriptionRole = "member";
     }

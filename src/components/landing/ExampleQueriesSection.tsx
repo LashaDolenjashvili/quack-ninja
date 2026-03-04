@@ -123,7 +123,7 @@ export function ExampleQueriesSection() {
   };
 
   return (
-    <Section variant="light" id="example-queries">
+    <Section variant="light" id="example-queries" className="scroll-mt-24">
       <Container className="flex flex-col gap-10">
         <div className="flex flex-col gap-6">
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#09A483]">

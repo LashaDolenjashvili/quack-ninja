@@ -167,9 +167,9 @@ export function WorkspaceEditor() {
   const limits = entitlements;
   const limitText = useMemo(() => getLimitText(plan), [plan]);
   const proLimitText = useMemo(() => getLimitText("pro"), []);
-  const upgradeTitle = "Billing coming soon";
+  const upgradeTitle = "Upgrade for higher limits";
   const trialUpgradeNote =
-    "Payments are being enabled. You can use QuackNinja free in the meantime.";
+    "Paid plans are live. Choose Individual or Team in Settings when you need larger limits or managed team access.";
   const duckdb = useMemo(() => getDuckDBClient(), []);
   const activeTab = useMemo(
     () =>
@@ -348,9 +348,9 @@ export function WorkspaceEditor() {
     showUpgrade: boolean;
     bulletsLabel?: string;
   }>({
-    title: "Billing coming soon",
+    title: "Upgrade for higher limits",
     description:
-      "Payments are being enabled. You can use QuackNinja free in the meantime.",
+      "Paid plans are live. Choose Individual or Team in Settings when you need larger limits or managed team access.",
     bullets: [],
     showUpgrade: true,
     bulletsLabel: undefined,
@@ -1959,7 +1959,7 @@ export function WorkspaceEditor() {
       <WorkspaceTopBar
         title="Console"
         onOpenSchema={() => setShowSchemaDrawer(true)}
-        statusLabel="Pro (Early Access)"
+        statusLabel="In-browser DuckDB"
       />
 
       <div className="grid min-h-0 grid-cols-[320px_1fr] gap-0 overflow-hidden md:grid-cols-[320px_1fr]">

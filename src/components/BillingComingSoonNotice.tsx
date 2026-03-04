@@ -11,10 +11,11 @@ export function BillingComingSoonNotice({ className }: BillingComingSoonNoticePr
         Billing
       </p>
       <p className="mt-2 text-lg font-semibold text-[#0B1220]">
-        Billing coming soon
+        Paid plans are live
       </p>
       <p className="mt-1 text-sm text-[#5B6B82]">
-        Payments are being enabled. You can use QuackNinja free in the meantime.
+        Review current pricing, manage auto-renew, and switch plans from
+        Pricing or Settings.
       </p>
     </div>
   );

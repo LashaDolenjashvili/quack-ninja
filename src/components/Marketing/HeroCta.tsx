@@ -11,7 +11,7 @@ export function HeroCta() {
         showSecondary={false}
         signedInExtras={
           <a
-            href="#use-cases"
+            href="#example-queries"
             className={buttonClassName({
               variant: "ghost",
               size: "lg",
@@ -24,7 +24,7 @@ export function HeroCta() {
         }
         signedOutExtras={
           <a
-            href="#use-cases"
+            href="#example-queries"
             className={buttonClassName({
               variant: "ghost",
               size: "lg",

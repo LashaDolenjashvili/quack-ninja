@@ -150,18 +150,18 @@ export function Sidebar({
           ) : (
             <div className="rounded-2xl border border-white/20 bg-white/10 p-4">
               <p className="text-sm font-semibold text-white">
-                Billing coming soon
+                Paid plans
               </p>
               <p className="mt-2 text-xs text-white/70">
-                Payments are being enabled. You can use QuackNinja free in the meantime.
+                Switch between Individual and Team plans from Settings.
+                Auto-renew is optional.
               </p>
-              <button
-                className="mt-4 w-full cursor-not-allowed rounded-lg bg-white/20 px-3 py-2 text-xs font-semibold text-white/70"
-                type="button"
-                disabled
+              <Link
+                href={userEmail ? "/app/settings" : "/pricing"}
+                className="mt-4 block w-full rounded-lg bg-white/20 px-3 py-2 text-center text-xs font-semibold text-white transition hover:bg-white/25"
               >
-                Pro — coming soon
-              </button>
+                {userEmail ? "Manage billing" : "View pricing"}
+              </Link>
             </div>
           )}
         </div>
