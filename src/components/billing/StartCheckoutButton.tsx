@@ -25,25 +25,23 @@ function normalizeCheckoutUrl(rawUrl: string) {
     throw new Error("Checkout URL is unavailable. Please try again.");
   }
 
+  let parsed: URL;
   try {
-    return new URL(trimmed).toString();
+    parsed = new URL(trimmed);
   } catch {
     // Provider occasionally returns host/path without scheme. Normalize to https.
     if (/^[A-Za-z0-9.-]+\.[A-Za-z]{2,}(\/.*)?$/.test(trimmed)) {
-      return `https://${trimmed}`;
+      parsed = new URL(`https://${trimmed}`);
+    } else {
+      throw new Error("Invalid checkout URL returned by billing provider.");
     }
-    throw new Error("Invalid checkout URL returned by billing provider.");
   }
-}
 
-function isAllowedCheckoutHost(urlString: string) {
-  const hostname = new URL(urlString).hostname.toLowerCase();
-  return (
-    hostname === "checkout.paddle.com" ||
-    hostname.endsWith(".paddle.com") ||
-    hostname === "pay.paddle.com" ||
-    hostname.endsWith(".paddle.io")
-  );
+  if (parsed.protocol !== "https:") {
+    throw new Error("Invalid checkout URL protocol returned by billing provider.");
+  }
+
+  return parsed.toString();
 }
 
 export function StartCheckoutButton({
@@ -76,9 +74,6 @@ export function StartCheckoutButton({
       throw new Error("Checkout URL is unavailable. Please try again.");
     }
     const normalized = normalizeCheckoutUrl(checkoutUrl);
-    if (!isAllowedCheckoutHost(normalized)) {
-      throw new Error("Unexpected checkout destination. Please contact support.");
-    }
     console.info("[QuackNinja][Billing] Redirecting to hosted checkout", normalized);
     window.location.href = normalized;
   };
