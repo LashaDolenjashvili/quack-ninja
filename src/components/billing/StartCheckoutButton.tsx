@@ -19,6 +19,33 @@ type StartCheckoutButtonProps = {
   fullWidth?: boolean;
 };
 
+function normalizeCheckoutUrl(rawUrl: string) {
+  const trimmed = rawUrl.trim();
+  if (!trimmed) {
+    throw new Error("Checkout URL is unavailable. Please try again.");
+  }
+
+  try {
+    return new URL(trimmed).toString();
+  } catch {
+    // Provider occasionally returns host/path without scheme. Normalize to https.
+    if (/^[A-Za-z0-9.-]+\.[A-Za-z]{2,}(\/.*)?$/.test(trimmed)) {
+      return `https://${trimmed}`;
+    }
+    throw new Error("Invalid checkout URL returned by billing provider.");
+  }
+}
+
+function isAllowedCheckoutHost(urlString: string) {
+  const hostname = new URL(urlString).hostname.toLowerCase();
+  return (
+    hostname === "checkout.paddle.com" ||
+    hostname.endsWith(".paddle.com") ||
+    hostname === "pay.paddle.com" ||
+    hostname.endsWith(".paddle.io")
+  );
+}
+
 export function StartCheckoutButton({
   planCode,
   label,
@@ -48,7 +75,12 @@ export function StartCheckoutButton({
     if (!checkoutUrl || typeof checkoutUrl !== "string") {
       throw new Error("Checkout URL is unavailable. Please try again.");
     }
-    window.location.assign(checkoutUrl);
+    const normalized = normalizeCheckoutUrl(checkoutUrl);
+    if (!isAllowedCheckoutHost(normalized)) {
+      throw new Error("Unexpected checkout destination. Please contact support.");
+    }
+    console.info("[QuackNinja][Billing] Redirecting to hosted checkout", normalized);
+    window.location.href = normalized;
   };
 
   const handleConfirm = async ({ autoRenew }: { autoRenew: boolean }) => {
