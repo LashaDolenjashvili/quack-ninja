@@ -129,12 +129,19 @@ export async function createPaddleTransaction({
     throw new Error("Unable to create Paddle checkout transaction.");
   }
 
+  const checkoutUrl =
+    typeof payload.data.checkout?.url === "string"
+      ? payload.data.checkout.url
+      : null;
+  if (!checkoutUrl) {
+    throw new Error(
+      "Unable to create Paddle checkout URL. Configure a Default Payment Link in Paddle Checkout settings and try again."
+    );
+  }
+
   return {
     transactionId: payload.data.id,
-    checkoutUrl:
-      typeof payload.data.checkout?.url === "string"
-        ? payload.data.checkout.url
-        : null,
+    checkoutUrl,
   };
 }
 

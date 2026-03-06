@@ -2,13 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { PaidPlanCode } from "@/src/billing/catalog";
-import {
-  ensurePaddleReady,
-  isPaddleUnavailableError,
-  openPaddleCheckout,
-} from "@/src/billing/paddleClient";
 import { supabase, supabaseConfigured } from "@/src/lib/supabaseClient";
 import { Button } from "@/src/components/ui/button";
 import { buttonClassName } from "@/src/components/ui/button";
@@ -37,43 +32,23 @@ export function StartCheckoutButton({
   const [working, setWorking] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
 
-  useEffect(() => {
-    if (!user || loading || !supabaseConfigured) {
-      return;
-    }
-    void ensurePaddleReady().catch(() => undefined);
-  }, [user, loading]);
-
   const activeSubscription =
     billingData?.subscription?.provider === "paddle"
       ? billingData.subscription
       : null;
 
-  const openCheckoutWithFallback = async ({
-    transactionId,
+  const redirectToCheckout = ({
     checkoutUrl,
   }: {
-    transactionId: string;
     checkoutUrl?: string | null;
   }) => {
-    try {
-      await openPaddleCheckout({ transactionId });
-    } catch (error) {
-      if (
-        isPaddleUnavailableError(error) &&
-        typeof window !== "undefined" &&
-        typeof checkoutUrl === "string" &&
-        checkoutUrl.length > 0
-      ) {
-        console.error(
-          "[QuackNinja][Paddle] overlay unavailable, redirecting to hosted checkout",
-          window.__quackPaddleDiag ?? []
-        );
-        window.location.assign(checkoutUrl);
-        return;
-      }
-      throw error;
+    if (typeof window === "undefined") {
+      return;
     }
+    if (!checkoutUrl || typeof checkoutUrl !== "string") {
+      throw new Error("Checkout URL is unavailable. Please try again.");
+    }
+    window.location.assign(checkoutUrl);
   };
 
   const handleConfirm = async ({ autoRenew }: { autoRenew: boolean }) => {
@@ -125,8 +100,6 @@ export function StartCheckoutButton({
           return;
         }
 
-        await ensurePaddleReady();
-
         const cancelResponse = await fetch("/api/billing/manage-subscription", {
           method: "POST",
           headers: {
@@ -142,13 +115,11 @@ export function StartCheckoutButton({
           throw new Error(cancelPayload?.error ?? "Failed to cancel the current plan.");
         }
         await refreshBilling();
-        await openCheckoutWithFallback({
-          transactionId: payload.transaction_id,
+        redirectToCheckout({
           checkoutUrl: payload.checkout_url,
         });
       } else if (payload?.mode === "checkout" && payload.transaction_id) {
-        await openCheckoutWithFallback({
-          transactionId: payload.transaction_id,
+        redirectToCheckout({
           checkoutUrl: payload.checkout_url,
         });
       } else if (payload?.message) {
@@ -156,17 +127,7 @@ export function StartCheckoutButton({
       }
       setModalOpen(false);
     } catch (err) {
-      if (typeof window !== "undefined" && isPaddleUnavailableError(err)) {
-        console.error(
-          "[QuackNinja][Paddle] checkout diagnostics",
-          window.__quackPaddleDiag ?? []
-        );
-      }
-      const message = isPaddleUnavailableError(err)
-        ? "Checkout provider is still loading. Please refresh the page and try again."
-        : err instanceof Error
-          ? err.message
-          : "Checkout failed.";
+      const message = err instanceof Error ? err.message : "Checkout failed.";
       window.alert(message);
     } finally {
       setWorking(false);
@@ -184,7 +145,6 @@ export function StartCheckoutButton({
       return;
     }
     setModalOpen(true);
-    void ensurePaddleReady().catch(() => undefined);
   };
 
   if (!user && !loading) {
