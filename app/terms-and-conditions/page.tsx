@@ -3,15 +3,14 @@ import { LegalShell } from "@/src/components/layout/LegalShell";
 import { LegalCard } from "@/src/components/legal/LegalCard";
 import { LegalHeader } from "@/src/components/legal/LegalHeader";
 import { LegalTOC } from "@/src/components/legal/LegalTOC";
+import { buildMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Terms and Conditions • QuackNinja",
+export const metadata: Metadata = buildMetadata({
+  title: "Terms and Conditions",
   description:
     "Terms and Conditions for QuackNinja, including service details and payments.",
-  alternates: {
-    canonical: "https://www.quackninja.com/terms-and-conditions",
-  },
-};
+  path: "/terms-and-conditions",
+});
 
 export default function TermsAndConditionsPage() {
   return (

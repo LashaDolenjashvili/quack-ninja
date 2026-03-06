@@ -3,15 +3,14 @@ import { LegalShell } from "@/src/components/layout/LegalShell";
 import { LegalCard } from "@/src/components/legal/LegalCard";
 import { LegalHeader } from "@/src/components/legal/LegalHeader";
 import { LegalTOC } from "@/src/components/legal/LegalTOC";
+import { buildMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Privacy Policy • QuackNinja",
+export const metadata: Metadata = buildMetadata({
+  title: "Privacy Policy",
   description:
     "Privacy Policy for QuackNinja, including account data and local files.",
-  alternates: {
-    canonical: "https://www.quackninja.com/privacy-policy",
-  },
-};
+  path: "/privacy-policy",
+});
 
 export default function PrivacyPolicyPage() {
   return (

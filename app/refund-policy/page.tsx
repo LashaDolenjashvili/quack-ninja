@@ -3,14 +3,13 @@ import { LegalShell } from "@/src/components/layout/LegalShell";
 import { LegalCard } from "@/src/components/legal/LegalCard";
 import { LegalHeader } from "@/src/components/legal/LegalHeader";
 import { LegalCallout } from "@/src/components/legal/LegalCallout";
+import { buildMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Refund Policy • QuackNinja",
+export const metadata: Metadata = buildMetadata({
+  title: "Refund Policy",
   description: "Refund Policy for QuackNinja subscriptions.",
-  alternates: {
-    canonical: "https://www.quackninja.com/refund-policy",
-  },
-};
+  path: "/refund-policy",
+});
 
 export default function RefundPolicyPage() {
   return (
