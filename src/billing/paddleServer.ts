@@ -1,4 +1,5 @@
 import {
+  getCheckoutLaunchUrl,
   getPaddlePriceIdForPlanCode,
   getSuccessUrl,
   type PaidPlanCode,
@@ -122,6 +123,7 @@ export async function createPaddleTransaction({
       trial_remaining_seconds: trialRemainingSeconds,
     },
     checkout: {
+      url: getCheckoutLaunchUrl(),
       success_url: getSuccessUrl(),
     },
   };

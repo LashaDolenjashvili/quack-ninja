@@ -104,3 +104,7 @@ export function getSuccessUrl() {
 export function getCancelUrl() {
   return `${getAppUrl()}/pricing?billing=canceled`;
 }
+
+export function getCheckoutLaunchUrl() {
+  return `${getAppUrl()}/checkout`;
+}
