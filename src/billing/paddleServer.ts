@@ -11,6 +11,26 @@ type PaddleResponse<T> = {
   };
 };
 
+function normalizeProviderCheckoutUrl(rawUrl: string | null | undefined) {
+  if (!rawUrl || typeof rawUrl !== "string") {
+    return null;
+  }
+
+  const trimmed = rawUrl.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  try {
+    return new URL(trimmed).toString();
+  } catch {
+    if (/^[A-Za-z0-9.-]+\.[A-Za-z]{2,}(\/.*)?$/.test(trimmed)) {
+      return `https://${trimmed}`;
+    }
+    return null;
+  }
+}
+
 function getPaddleBaseUrl() {
   return process.env.PADDLE_ENV === "production"
     ? "https://api.paddle.com"
@@ -129,10 +149,7 @@ export async function createPaddleTransaction({
     throw new Error("Unable to create Paddle checkout transaction.");
   }
 
-  const checkoutUrl =
-    typeof payload.data.checkout?.url === "string"
-      ? payload.data.checkout.url
-      : null;
+  const checkoutUrl = normalizeProviderCheckoutUrl(payload.data.checkout?.url);
   if (!checkoutUrl) {
     throw new Error(
       "Unable to create Paddle checkout URL. Configure a Default Payment Link in Paddle Checkout settings and try again."
