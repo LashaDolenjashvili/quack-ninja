@@ -4,6 +4,7 @@ import { NavigationLogger } from "@/src/components/NavigationLogger";
 import { Suspense } from "react";
 import { QueryProvider } from "@/src/components/QueryProvider";
 import { Providers } from "./providers";
+import { SITE_URL } from "@/lib/seo";
 import "../src/styles/globals.css";
 
 const quicksand = Quicksand({
@@ -12,17 +13,19 @@ const quicksand = Quicksand({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://www.quackninja.com"),
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "QuackNinja",
-    template: "%s — QuackNinja",
+    template: "%s | QuackNinja",
   },
   description:
-    "Run SQL on CSV, Excel, and Parquet locally in your browser. Get answers fast and export clean results.",
+    "Run SQL on CSV, Excel, and Parquet in your browser with DuckDB. Query files quickly and export clean results.",
   openGraph: {
     title: "QuackNinja",
     description:
-      "Open exports in your browser, get answers fast, and share a clean CSV in minutes.",
+      "Run SQL on CSV, Excel, and Parquet in your browser with DuckDB.",
+    siteName: "QuackNinja",
+    type: "website",
     images: ["/brand/quack-ninja.svg"],
   },
   twitter: {

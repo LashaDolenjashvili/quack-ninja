@@ -125,7 +125,7 @@ export async function POST(request: Request) {
     const trialActive = Boolean(trialEndsAt && trialRemainingSeconds > 0);
 
     const createTransaction = async () => {
-      const transactionId = await createPaddleTransaction({
+      const transaction = await createPaddleTransaction({
         userId: authData.user.id,
         email: authData.user.email ?? null,
         planCode: targetPlanCode,
@@ -135,7 +135,8 @@ export async function POST(request: Request) {
       });
       return NextResponse.json({
         mode: "checkout",
-        transaction_id: transactionId,
+        transaction_id: transaction.transactionId,
+        checkout_url: transaction.checkoutUrl,
         message: trialActive
           ? "Trial remains visible in the app until it ends, but the paid subscription starts immediately after checkout."
           : "Checkout ready.",
@@ -163,7 +164,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const switchTransactionId = await createPaddleTransaction({
+    const switchTransaction = await createPaddleTransaction({
       userId: authData.user.id,
       email: authData.user.email ?? null,
       planCode: targetPlan,
@@ -174,7 +175,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       mode: "switch_required",
-      transaction_id: switchTransactionId,
+      transaction_id: switchTransaction.transactionId,
+      checkout_url: switchTransaction.checkoutUrl,
       message: `Switching from ${currentPlan.replace("_", " ")} to ${targetPlan.replace("_", " ")} requires canceling the current plan first.`,
     });
   } catch (error) {

@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase, supabaseConfigured } from "@/src/lib/supabaseClient";
 import { logClientError } from "@/src/lib/logger";
-import type { Entitlements, PlanTier } from "@/src/lib/entitlements";
+import { getEntitlements, type Entitlements, type PlanTier } from "@/src/lib/entitlements";
 import type { BillingRole } from "@/src/billing/types";
 
 export type EntitlementsResponse = {
@@ -24,6 +24,23 @@ export type EntitlementsResponse = {
 
 const queryKey = ["billing", "entitlements"];
 
+function getFallbackEntitlements(): EntitlementsResponse {
+  return {
+    plan: "free",
+    effective_plan: "free",
+    billing_role: "none",
+    limits: getEntitlements("free"),
+    is_trial_active: false,
+    trial_started_at: null,
+    trial_ends_at: null,
+    trial_consumed: false,
+    trial_has_ended: false,
+    trial_enabled: true,
+    trial_days: 7,
+    server_now: new Date().toISOString(),
+  };
+}
+
 async function fetchEntitlements(): Promise<EntitlementsResponse | null> {
   if (!supabaseConfigured) {
     return null;
@@ -38,13 +55,17 @@ async function fetchEntitlements(): Promise<EntitlementsResponse | null> {
     });
 
     if (!response.ok) {
-      throw new Error("Failed to load entitlements.");
+      logClientError(
+        new Error(`Failed to load entitlements (${response.status}).`),
+        "Entitlements fetch failed"
+      );
+      return getFallbackEntitlements();
     }
 
     return response.json();
   } catch (err) {
     logClientError(err, "Entitlements fetch failed");
-    throw err;
+    return getFallbackEntitlements();
   }
 }
 

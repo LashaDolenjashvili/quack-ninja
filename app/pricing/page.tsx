@@ -2,15 +2,14 @@ import type { Metadata } from "next";
 import { AppHeader } from "@/src/components/layout/AppHeader";
 import { PricingSection } from "@/src/components/Marketing/PricingSection";
 import { Footer } from "@/src/components/layout/Footer";
+import { buildMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Pricing • QuackNinja",
+export const metadata: Metadata = buildMetadata({
+  title: "Pricing",
   description:
     "Simple plans that scale with your data. Start free, then switch to a paid plan when you need larger limits, exports, or team access.",
-  alternates: {
-    canonical: "https://www.quackninja.com/pricing",
-  },
-};
+  path: "/pricing",
+});
 
 export default function PricingPage() {
   return (

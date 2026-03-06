@@ -115,7 +115,12 @@ export async function createPaddleTransaction({
     };
   }
 
-  const payload = await paddleRequest<{ id?: string }>("/transactions", {
+  const payload = await paddleRequest<{
+    id?: string;
+    checkout?: {
+      url?: string | null;
+    } | null;
+  }>("/transactions", {
     method: "POST",
     body: JSON.stringify(requestBody),
   });
@@ -124,7 +129,13 @@ export async function createPaddleTransaction({
     throw new Error("Unable to create Paddle checkout transaction.");
   }
 
-  return payload.data.id;
+  return {
+    transactionId: payload.data.id,
+    checkoutUrl:
+      typeof payload.data.checkout?.url === "string"
+        ? payload.data.checkout.url
+        : null,
+  };
 }
 
 export async function updatePaddleSubscriptionPlan({

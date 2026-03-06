@@ -29,6 +29,7 @@ const DB_NAME = "filesql-session";
 const DB_VERSION = 1;
 
 let dbPromise: ReturnType<typeof openDB<SessionSchema>> | null = null;
+let writeQueue: Promise<void> = Promise.resolve();
 
 function getDb() {
   if (!dbPromise) {
@@ -64,10 +65,20 @@ export async function saveSessionSnapshot(
     activeTabId: payload.activeTabId ?? null,
     updatedAt: Date.now(),
   };
-  await db.put("sessionSnapshots", snapshot);
+  writeQueue = writeQueue
+    .catch(() => undefined)
+    .then(async () => {
+      await db.put("sessionSnapshots", snapshot);
+    });
+  await writeQueue;
 }
 
 export async function clearSessionSnapshot(id: string) {
   const db = await getDb();
-  await db.delete("sessionSnapshots", id);
+  writeQueue = writeQueue
+    .catch(() => undefined)
+    .then(async () => {
+      await db.delete("sessionSnapshots", id);
+    });
+  await writeQueue;
 }

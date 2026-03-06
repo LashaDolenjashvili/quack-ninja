@@ -1,14 +1,24 @@
 import type { MetadataRoute } from "next";
+import { SITE_URL } from "@/lib/seo";
 
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
       {
         userAgent: "*",
-        allow: ["/", "/api/og"],
-        disallow: ["/app", "/auth", "/console", "/settings", "/api"],
+        allow: "/",
+        disallow: [
+          "/api",
+          "/api/",
+          "/auth",
+          "/auth/",
+          "/app",
+          "/app/",
+          "/_next",
+          "/_next/",
+        ],
       },
     ],
-    sitemap: "https://www.quackninja.com/sitemap.xml",
+    sitemap: `${SITE_URL}/sitemap.xml`,
   };
 }
