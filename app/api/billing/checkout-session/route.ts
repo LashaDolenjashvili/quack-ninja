@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import {
+  getCheckoutLaunchUrl,
   getPaddlePriceIdForPlanCode,
   getSuccessUrl,
   isPaidPlanCode,
@@ -113,6 +114,7 @@ export async function POST(request: Request) {
       trial_remaining_seconds: trialRemainingSeconds,
     },
     checkout: {
+      url: getCheckoutLaunchUrl(),
       success_url: getSuccessUrl(),
     },
   };
