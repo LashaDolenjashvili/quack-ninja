@@ -5,6 +5,16 @@ export const SITE_URL =
   process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/+$/, "") ||
   "https://www.quackninja.com";
 
+export const BRAND_PROFILE_URLS = (
+  process.env.NEXT_PUBLIC_BRAND_PROFILE_URLS ?? ""
+)
+  .split(",")
+  .map((value) => value.trim())
+  .filter(Boolean);
+
+export const GOOGLE_SITE_VERIFICATION =
+  process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?.trim() || undefined;
+
 export function absoluteUrl(path: string) {
   if (/^https?:\/\//.test(path)) {
     return path;
@@ -17,6 +27,7 @@ type MetadataInput = {
   description: string;
   path: string;
   ogImage?: string;
+  keywords?: string[];
 };
 
 export function buildMetadata({
@@ -24,11 +35,13 @@ export function buildMetadata({
   description,
   path,
   ogImage = "/brand/quack-ninja.svg",
+  keywords,
 }: MetadataInput): Metadata {
   const canonical = absoluteUrl(path);
   return {
     title,
     description,
+    keywords,
     alternates: {
       canonical,
     },
@@ -54,8 +67,12 @@ export function buildOrganizationJsonLd() {
     "@context": "https://schema.org",
     "@type": "Organization",
     name: "QuackNinja",
+    alternateName: ["Quack Ninja"],
+    description:
+      "QuackNinja is a browser-based SQL workspace for querying CSV, Excel, and Parquet files locally with DuckDB.",
     url: SITE_URL,
     logo: absoluteUrl("/brand/quack-ninja.svg"),
+    ...(BRAND_PROFILE_URLS.length > 0 ? { sameAs: BRAND_PROFILE_URLS } : {}),
   };
 }
 
@@ -65,6 +82,8 @@ export function buildWebsiteJsonLd() {
     "@type": "WebSite",
     name: "QuackNinja",
     url: SITE_URL,
+    description:
+      "Run SQL on CSV, Excel, and Parquet in your browser with QuackNinja.",
   };
 }
 

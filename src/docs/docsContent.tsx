@@ -75,7 +75,7 @@ export const docsNav: DocsNavGroup[] = [
 
 export const docsSearchIndex = [
   { title: "Overview", href: "/docs" },
-  { title: "What QuackNinja is", href: "/docs#what-is-filesql" },
+  { title: "What QuackNinja is", href: "/docs#what-is-quackninja" },
   { title: "Query tabs", href: "/docs#query-tabs" },
   { title: "Saved queries", href: "/docs#saved-queries" },
   { title: "What it’s for", href: "/docs#what-its-for" },
@@ -244,26 +244,27 @@ function overviewPage(ctx: DocsContext): DocsPage {
 
   return {
     slug: "overview",
-    title: "Quick answers from real exports",
+    title: "QuackNinja docs for quick answers from real exports",
     description:
-      "Runs in your browser. Files stay on your computer.",
+      "QuackNinja documentation for querying local CSV, Excel, and Parquet files in your browser.",
     sections: [
       {
-        id: "what-is-filesql",
+        id: "what-is-quackninja",
         heading: "What QuackNinja is",
         body: (
           <>
             <p>
-              QuackNinja helps you get quick answers from real exports. It runs in
-              your browser and keeps files on your computer.
+              QuackNinja is a browser-based SQL workspace for getting quick
+              answers from real exports. It runs in your browser and keeps
+              files on your computer.
             </p>
             <p className="mt-3">
-              Attach {joinList(formatShortList)} files, run SQL, and export
-              results as CSV. No setup needed.
+              Use QuackNinja to attach {joinList(formatShortList)} files, run
+              SQL, and export results as CSV. No setup needed.
             </p>
             <Callout tone="note">
               <p>
-                This is a single-session experience per browser tab.
+                QuackNinja is a single-session experience per browser tab.
               </p>
             </Callout>
           </>

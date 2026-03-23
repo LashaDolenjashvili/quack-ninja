@@ -3,10 +3,15 @@ import { DocsPage } from "@/src/components/docs/DocsPage";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = buildMetadata({
-  title: "Docs",
+  title: "QuackNinja Docs",
   description:
-    "Documentation for QuackNinja: import files, run DuckDB SQL locally, and export results.",
+    "QuackNinja docs for importing files, running DuckDB SQL locally, and exporting results.",
   path: "/docs",
+  keywords: [
+    "QuackNinja docs",
+    "QuackNinja documentation",
+    "DuckDB browser SQL docs",
+  ],
 });
 
 export default function DocsOverviewPage() {

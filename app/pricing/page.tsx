@@ -5,10 +5,15 @@ import { Footer } from "@/src/components/layout/Footer";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = buildMetadata({
-  title: "Pricing",
+  title: "QuackNinja Pricing",
   description:
-    "Simple plans that scale with your data. Start free, then switch to a paid plan when you need larger limits, exports, or team access.",
+    "QuackNinja pricing for bigger file limits, exports, and team access. Start free and upgrade when you need more capacity.",
   path: "/pricing",
+  keywords: [
+    "QuackNinja pricing",
+    "QuackNinja plans",
+    "SQL on CSV pricing",
+  ],
 });
 
 export default function PricingPage() {
