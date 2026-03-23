@@ -80,10 +80,18 @@ const faqs = [
 ];
 
 export const metadata: Metadata = buildMetadata({
-  title: "SQL on CSV, Excel & Parquet",
+  title: "QuackNinja: SQL on CSV, Excel & Parquet",
   description:
-    "Run SQL on CSV, Excel, and Parquet locally in your browser. Get answers fast and export clean results.",
+    "QuackNinja helps you run SQL on CSV, Excel, and Parquet locally in your browser. Get answers fast, spot issues, and export clean results.",
   path: "/",
+  keywords: [
+    "QuackNinja",
+    "Quack Ninja",
+    "SQL on CSV",
+    "SQL on Excel",
+    "SQL on Parquet",
+    "DuckDB in browser",
+  ],
 });
 
 
@@ -150,19 +158,19 @@ export default function MarketingPage() {
             <div className="flex flex-col gap-6">
               <div className="flex flex-wrap items-center gap-3">
                 <span className="inline-flex w-fit items-center gap-2 rounded-full border border-white/30 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-white/80">
-                  Made for quick checks on real files
+                  QuackNinja for quick checks on real files
                 </span>
                 <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#09A483]">
                   Powered by DuckDB
                 </span>
               </div>
               <h1 className="text-4xl font-semibold leading-tight text-white sm:text-5xl">
-                Turn messy exports into answers in minutes.
+                QuackNinja turns messy exports into answers in minutes.
               </h1>
               <p className="text-lg text-white/90">
-                Run SQL on CSV, Excel, and Parquet — without setting up a
-                database. Join files, spot issues, and export a clean result
-                your team can use.
+                QuackNinja lets you run SQL on CSV, Excel, and Parquet without
+                setting up a database. Join files, spot issues, and export a
+                clean result your team can use.
               </p>
               <p className="text-sm text-white/80">
                 Runs locally in your browser. Your files stay on your computer.
@@ -191,6 +199,36 @@ export default function MarketingPage() {
                   ]}
                 />
               </Card>
+            </div>
+          </section>
+
+          <section className="grid gap-6 rounded-[2rem] border border-white/15 bg-white/8 p-8 backdrop-blur md:grid-cols-[1.2fr_0.8fr]">
+            <div className="space-y-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#7FE3CF]">
+                What QuackNinja is
+              </p>
+              <h2 className="text-2xl font-semibold text-white sm:text-3xl">
+                QuackNinja is a browser-based SQL workspace for real exports.
+              </h2>
+              <p className="max-w-3xl text-base leading-7 text-white/85">
+                It is built for operators, analysts, and founders who need fast
+                answers from CSV, Excel, or Parquet files without loading data
+                into a database first.
+              </p>
+              <p className="max-w-3xl text-base leading-7 text-white/85">
+                Start with the <a href="/docs" className="font-semibold text-white underline decoration-white/30 underline-offset-4 hover:decoration-white">QuackNinja docs</a> to learn the workflow, or check <a href="/pricing" className="font-semibold text-white underline decoration-white/30 underline-offset-4 hover:decoration-white">QuackNinja pricing</a> if you need larger limits or team access.
+              </p>
+            </div>
+            <div className="rounded-[1.5rem] border border-white/10 bg-[#02152b]/70 p-6">
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#7FE3CF]">
+                How QuackNinja works
+              </p>
+              <ul className="mt-4 space-y-3 text-sm leading-6 text-white/85">
+                <li>Attach one or more files directly in the browser.</li>
+                <li>Run DuckDB SQL locally on those files.</li>
+                <li>Check joins, duplicates, nulls, and strange rows fast.</li>
+                <li>Export the cleaned result as CSV for the next step.</li>
+              </ul>
             </div>
           </section>
         </div>
